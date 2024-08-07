@@ -4,7 +4,7 @@ import json
 import numpy as np
 import os
 import logging
-
+import sys
 from tqdm import tqdm
 from factscore.abstain_detection import is_response_abstained
 from factscore.atomic_facts import AtomicFactGenerator
@@ -12,6 +12,7 @@ from factscore.clm import CLM
 from factscore.npm import NPM
 from factscore.openai_lm import OpenAIModel
 from factscore.retrieval import DocDB, Retrieval
+from typing import List, Optional
 
 class FactScorer(object):
 
@@ -23,6 +24,7 @@ class FactScorer(object):
                  openai_key="api.key",
                  cost_estimate="consider_cache",
                  abstain_detection_type=None,
+                 grounding_provided=False,
                  batch_size=256):
         assert model_name in ["retrieval+llama", "retrieval+llama+npm", "retrieval+ChatGPT", "npm", "retrieval+ChatGPT+npm"]
         self.model_name = model_name
@@ -33,6 +35,7 @@ class FactScorer(object):
         self.batch_size = batch_size # batch size for retrieval
         self.openai_key = openai_key
         self.abstain_detection_type = abstain_detection_type
+        self.grounding_provided = grounding_provided
 
         self.data_dir = data_dir
         self.cache_dir = cache_dir
@@ -104,10 +107,12 @@ class FactScorer(object):
     def get_score(self,
                   topics,
                   generations,
+                  grounding,
                   gamma=10,
                   atomic_facts=None,
                   knowledge_source=None,
-                  verbose=False):
+                  verbose=False,
+                  grounding_provided=False):
         if knowledge_source is None:
             # use the default knowledge source
             knowledge_source = "enwiki-20230401"
@@ -181,7 +186,7 @@ class FactScorer(object):
             if facts is None:
                 decisions.append(None)
             else:
-                decision = self._get_score(topic, generation, facts, knowledge_source)
+                decision = self._get_score(topic, generation, facts, knowledge_source, grounding=grounding, grounding_provided=grounding_provided)
                 score = np.mean([d["is_supported"] for d in decision])
                 
                 if gamma:
@@ -206,7 +211,7 @@ class FactScorer(object):
         
         return out
 
-    def _get_score(self, topic, generation, atomic_facts, knowledge_source, cost_estimate=None):
+    def _get_score(self, topic, generation, atomic_facts, knowledge_source, grounding = None, grounding_provided=False, cost_estimate=None):
         decisions = []
         total_words = 0
         for atom in atomic_facts:
@@ -264,6 +269,120 @@ class FactScorer(object):
             return total_words
         else:
             return decisions
+def parse_options(args: List[str]) -> argparse.Namespace:
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--input_path',
+                        type=str,
+                        default="data/labeled/InstructGPT.jsonl")
+    parser.add_argument('--model_name',
+                        type=str,
+                        default="retrieval+ChatGPT")
+    parser.add_argument('--gamma',
+                        type=int,
+                        default=10,
+                        help="hyperparameter for length penalty")
+
+    parser.add_argument('--openai_key',
+                        type=str,
+                        default="api.key")
+    #@todo: Fix these paths to be defined from the majorityvoter or command line and revert this to the original factscore code stucture
+    parser.add_argument('--data_dir',
+                        type=str,
+                        default="/Users/anumafzal/PycharmProjects/FactSumm/FActScore/.cache/factscore/")
+    parser.add_argument('--model_dir',
+                        type=str,
+                        default="/Users/anumafzal/PycharmProjects/FactSumm/FActScore/.cache/factscore/")
+    parser.add_argument('--cache_dir',
+                        type=str,
+                        default="/Users/anumafzal/PycharmProjects/FactSumm/FActScore/.cache/factscore/")
+    parser.add_argument('--knowledge_source',
+                        type=str,
+                        default=None)
+
+    parser.add_argument('--cost_estimate',
+                        type=str,
+                        default="consider_cache",
+                        choices=["consider_cache", "ignore_cache"])
+    parser.add_argument('--abstain_detection_type',
+                        type=str,
+                        default=None,
+                        choices=["perplexity_ai", "generic", "none"])
+    parser.add_argument('--use_atomic_facts',
+                        action="store_true")
+    parser.add_argument('--verbose',
+                        action="store_true",
+                        help="for printing out the progress bar")
+    parser.add_argument('--print_rate_limit_error',
+                        action="store_true",
+                        help="for printing out rate limit error when using OpenAI keys")
+    parser.add_argument('--n_samples',
+                        type=int,
+                        default=None)
+    parser.add_argument('--grounding_provided',
+                        type=bool,
+                        default=False)
+
+    args = parser.parse_args()
+    return args
+
+
+def main(args: Optional[List[str]] = None) -> None:
+
+
+    args = parse_options(sys.argv[1:] if args is None else args)
+
+    logging.basicConfig(format='%(asctime)s - %(name)s - %(message)s',
+                        datefmt='%m/%d/%Y %H:%M:%S',
+                        level=logging.ERROR if args.print_rate_limit_error else logging.CRITICAL)
+
+    fs = FactScorer(model_name=args.model_name,
+                    data_dir=args.data_dir,
+                    model_dir=args.model_dir,
+                    cache_dir=args.cache_dir,
+                    openai_key=args.openai_key,
+                    cost_estimate=args.cost_estimate,
+                    abstain_detection_type=args.abstain_detection_type,
+                    grounding_provided = args.grounding_provided)
+
+    tot = 0
+    topics, generations, atomic_facts, grounding = [], [], [], []
+    with open(args.input_path) as f:
+        for line in f:
+            dp = json.loads(line)
+            tot += 1
+            if args.use_atomic_facts:
+                assert "annotations" in dp, "You can specify `--use_atomic_facts` only when atomic facts are available in the input data already."
+                if dp["annotations"] is None:
+                    continue
+                topics.append(dp["topic"])
+                generations.append(dp["output"])
+                atomic_facts.append([atom["text"] for sent in dp["annotations"] for atom in sent["model-atomic-facts"]])
+            else:
+                topics.append(dp["topic"])
+                generations.append(dp["output"])
+            if args.grounding_provided:
+                grounding.append(dp["input"])
+
+            if args.n_samples is not None and tot == args.n_samples:
+                break
+    out = fs.get_score(topics=topics,
+                       generations=generations,
+                       grounding=grounding,
+                       gamma=args.gamma,
+                       atomic_facts=atomic_facts if args.use_atomic_facts else None,
+                       knowledge_source=args.knowledge_source,
+                       verbose=args.verbose,
+                       grounding_provided=args.grounding_provided)
+    logging.critical("FActScore = %.1f%%" % (100 * out["score"]))
+    if "init_score" in out:
+        logging.critical("FActScore w/o length penalty = %.1f%%" % (100 * out["init_score"]))
+    logging.critical("Respond ratio = %.1f%%" % (100 * out["respond_ratio"]))
+    logging.critical("# Atomic facts per valid response = %.1f" % (out["num_facts_per_response"]))
+
+    # Save out as a json file
+    with open(args.input_path.replace(".jsonl", f"_factscore_output.json"), 'w') as f:
+        f.write(json.dumps(out) + "\n")
+
 
 if __name__ == '__main__':
 
@@ -315,6 +434,9 @@ if __name__ == '__main__':
     parser.add_argument('--n_samples',
                         type=int,
                         default=None)
+    parser.add_argument('--grounding_provided',
+                        type=bool,
+                        default=False)
 
     args = parser.parse_args()
 

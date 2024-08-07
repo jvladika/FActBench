@@ -126,7 +126,7 @@ class Retrieval(object):
     def load_encoder(self):
         from sentence_transformers import SentenceTransformer
         encoder = SentenceTransformer("sentence-transformers/" + self.retrieval_type)
-        encoder = encoder.cuda()
+        encoder = encoder#.cuda()
         encoder = encoder.eval()
         self.encoder = encoder
         assert self.batch_size is not None
