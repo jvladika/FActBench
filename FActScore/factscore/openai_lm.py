@@ -26,7 +26,7 @@ class OpenAIModel(LM):
         self.client = OpenAI(api_key=api_key.strip())
         self.model = self.model_name
 
-    def _generate(self, prompt, max_sequence_length=2048, max_output_length=128):
+    def _generate(self, prompt, max_sequence_length=16384, max_output_length=128):
         if self.add_n % self.save_interval == 0:
             self.save_cache()
         # return a tuple of string (generated text) and metadata (any format)
@@ -49,7 +49,7 @@ class OpenAIModel(LM):
             raise NotImplementedError()
 
 
-def call_ChatGPT(message, openai_client, model_name="gpt-3.5-turbo", max_len=1024, temp=0.7, verbose=False):
+def call_ChatGPT(message, openai_client, model_name="gpt-4o-mini", max_len=16384, temp=0.7, verbose=False):
     # call GPT-3 API until result is provided and then return it
     response = None
     received = False
@@ -76,7 +76,7 @@ def call_ChatGPT(message, openai_client, model_name="gpt-3.5-turbo", max_len=102
     return response
 
 
-def call_GPT3(prompt, openai_client, model_name="gpt-3.5-turbo-0125", max_len=512, temp=0.7, num_log_probs=0):
+def call_GPT3(prompt, openai_client, model_name="gpt-4o-mini", max_len=16384, temp=0.7, num_log_probs=0):
     # call GPT-3 API until result is provided and then return it
     response = None
     received = False

@@ -50,7 +50,7 @@ class FactScorer(object):
                           model_dir=os.path.join(model_dir, "inst-llama-7B"),
                           cache_file=os.path.join(cache_dir, "inst-llama-7B.pkl"))
         elif "ChatGPT" in model_name:
-            self.lm = OpenAIModel("ChatGPT",
+            self.lm = OpenAIModel("gpt-4o-mini",
                                   cache_file=os.path.join(cache_dir, "ChatGPT.pkl"),
                                   key_path=openai_key)
         else:
@@ -94,6 +94,7 @@ class FactScorer(object):
         # https://openai.com/pricing
         # if we use davinci-003, the cost is $0.02 per 1000 tokens
         # if we use gpt-3.5-turbo, the cost is $0.002 per 1000 tokens
+        # @todo: Anum update this
         if model == "davinci-003":
             rate = 0.02
         elif model == "gpt-3.5-turbo":
@@ -107,7 +108,7 @@ class FactScorer(object):
     def get_score(self,
                   topics,
                   generations,
-                  grounding,
+                  groundings,
                   gamma=10,
                   atomic_facts=None,
                   knowledge_source=None,
@@ -140,7 +141,7 @@ class FactScorer(object):
             for gen in generations:
                 total_words += self.af_generator.run(gen, cost_estimate=self.cost_estimate)
 
-            self.print_cost_estimates(total_words, task="atomic fact generation", model="davinci-003")
+            #self.print_cost_estimates(total_words, task="atomic fact generation", model="GPT-4o mini")
 
             if verbose:
                 topics = tqdm(topics)
@@ -170,11 +171,11 @@ class FactScorer(object):
         if "ChatGPT" in self.model_name:
             # estimate the total cost of response generation
             total_words = 0
-            for topic, generation, facts in zip(topics, generations, atomic_facts):
+            for topic, generation, facts, grounding in zip(topics, generations, atomic_facts, groundings):
                 if facts is not None:
-                    total_words += self._get_score(topic, generation, facts, knowledge_source, cost_estimate=self.cost_estimate)
+                    total_words += self._get_score(topic, generation, facts, knowledge_source, cost_estimate=self.cost_estimate, grounding=grounding, grounding_provided=grounding_provided)
 
-            self.print_cost_estimates(total_words, task="factscore evaluation", model="gpt-3.5-turbo")
+            #self.print_cost_estimates(total_words, task="factscore evaluation", model="gpt-3.5-turbo")
 
         if verbose:
             topics = tqdm(topics)
@@ -182,7 +183,8 @@ class FactScorer(object):
         scores = []
         init_scores = []
         decisions = []
-        for topic, generation, facts in zip(topics, generations, atomic_facts):
+        for topic, generation, facts, grounding in zip(topics, generations, atomic_facts, groundings):
+            print (f"Running for the follow facts. {facts}")
             if facts is None:
                 decisions.append(None)
             else:
@@ -217,7 +219,12 @@ class FactScorer(object):
         for atom in atomic_facts:
             atom = atom.strip()
             if self.lm:
-                passages = self.retrieval[knowledge_source].get_passages(topic, atom, k=5)
+                if grounding_provided:
+                    if isinstance(grounding, str):
+                        grounding = [grounding]
+                    passages = [{'title': 'Article', 'text': ground} for ground in grounding]
+                else: #@todo: some gpu issue here, fix it later
+                    passages = self.retrieval[knowledge_source].get_passages(topic, atom, k=5)
                 definition = "Answer the question about {} based on the given context.\n\n".format(topic)
                 context = ""
                 for psg_idx, psg in enumerate(reversed(passages)):
@@ -345,7 +352,7 @@ def main(args: Optional[List[str]] = None) -> None:
                     grounding_provided = args.grounding_provided)
 
     tot = 0
-    topics, generations, atomic_facts, grounding = [], [], [], []
+    topics, generations, atomic_facts, groundings = [], [], [], []
     with open(args.input_path) as f:
         for line in f:
             dp = json.loads(line)
@@ -361,13 +368,13 @@ def main(args: Optional[List[str]] = None) -> None:
                 topics.append(dp["topic"])
                 generations.append(dp["output"])
             if args.grounding_provided:
-                grounding.append(dp["input"])
+                groundings.append(dp["input"])
 
             if args.n_samples is not None and tot == args.n_samples:
                 break
     out = fs.get_score(topics=topics,
                        generations=generations,
-                       grounding=grounding,
+                       groundings=groundings,
                        gamma=args.gamma,
                        atomic_facts=atomic_facts if args.use_atomic_facts else None,
                        knowledge_source=args.knowledge_source,
