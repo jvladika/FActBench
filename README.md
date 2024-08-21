@@ -44,13 +44,13 @@ Update the paths inside the parse_options() of factscorer.py with absolute path 
                         default="/Users/anumafzal/PycharmProjects/FactSumm/FActScore/.cache/factscore/")
 ```
 ```
-python majorityvoter.py --input_path {path_to_jsonl} --model_name retrieval+ChatGPT --grounding_provided True --openai_key api.key
+python main.py --input_path {path_to_jsonl} --model_name retrieval+ChatGPT --grounding_provided True --openai_key api.key
 
 ```
 
 Example 
 ```
-python majorityvoter.py --input_path /Users/anumafzal/PycharmProjects/FactSumm/results/3z2i7njs_MODEL_gpt-3.5-turbo-1106_DS_pubmed_TASK_summarization.jsonl --model_name retrieval+ChatGPT --grounding_provided True --openai_key api.key
+python main.py --input_path /Users/anumafzal/PycharmProjects/FactSumm/results/3z2i7njs_MODEL_gpt-3.5-turbo-1106_DS_pubmed_TASK_summarization.jsonl --model_name GPT4-mini --grounding_provided True --openai_key api.key
 
 ```
 

@@ -26,7 +26,8 @@ class FactScorer(object):
                  abstain_detection_type=None,
                  grounding_provided=False,
                  batch_size=256):
-        assert model_name in ["retrieval+llama", "retrieval+llama+npm", "retrieval+ChatGPT", "npm", "retrieval+ChatGPT+npm"]
+        assert model_name in ["retrieval+llama", "retrieval+llama+npm", "retrieval+ChatGPT", "npm", "retrieval+ChatGPT+npm",
+                              "GPT4-mini"]
         self.model_name = model_name
 
         self.db = {}
@@ -49,7 +50,7 @@ class FactScorer(object):
             self.lm = CLM("inst-llama-7B",
                           model_dir=os.path.join(model_dir, "inst-llama-7B"),
                           cache_file=os.path.join(cache_dir, "inst-llama-7B.pkl"))
-        elif "ChatGPT" in model_name:
+        elif "GPT4" in model_name:
             self.lm = OpenAIModel("gpt-4o-mini",
                                   cache_file=os.path.join(cache_dir, "GPT4o-mini.pkl"),
                                   key_path=openai_key)

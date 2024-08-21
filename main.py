@@ -151,7 +151,7 @@ def csv_to_jsonl_for_factscore(results_dir):
         jsonl_paths.append(path_d)
 
         df = pd.read_csv(run, encoding='ISO-8859-1')
-        df = df.head(20)
+        df = df.head(2)
         #df = df.loc[[3,15,16,18]]
 
         # add columns required by factscore
@@ -203,8 +203,11 @@ if __name__ == '__main__':
     fs_extrinsic_out = genFact.run_fs_extrinsic(topics = factscore_out["topics"], wrong_facts = factscore_out["wrong_facts"],
                 groundings=  factscore_out["groundings"], generations = factscore_out["generations"],
                                             grounding_provided= factscore_out["grounding_provided"])
-    deberta_out = dict()
-    deberta_extrinsic_out = dict()
+
+    deberta_out = factscore_out
+    deberta_extrinsic_out = fs_extrinsic_out
+
+
 
 
 
