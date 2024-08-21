@@ -51,7 +51,7 @@ class FactScorer(object):
                           cache_file=os.path.join(cache_dir, "inst-llama-7B.pkl"))
         elif "ChatGPT" in model_name:
             self.lm = OpenAIModel("gpt-4o-mini",
-                                  cache_file=os.path.join(cache_dir, "ChatGPT.pkl"),
+                                  cache_file=os.path.join(cache_dir, "GPT4o-mini.pkl"),
                                   key_path=openai_key)
         else:
             self.lm = None
@@ -134,7 +134,7 @@ class FactScorer(object):
             if self.af_generator is None:
                 self.af_generator = AtomicFactGenerator(key_path=self.openai_key,
                                                         demon_dir=os.path.join(self.data_dir, "demos"),
-                                                        gpt3_cache_file=os.path.join(self.cache_dir, "InstructGPT.pkl"))
+                                                        gpt3_cache_file=os.path.join(self.cache_dir, "GPT4o-mini.pkl"))
 
             # estimate the total cost of atomic fact generation
             total_words = 0
@@ -183,6 +183,7 @@ class FactScorer(object):
         scores = []
         init_scores = []
         decisions = []
+        wrong_facts = []
         for topic, generation, facts, grounding in zip(topics, generations, atomic_facts, groundings):
             print (f"Running for the follow facts. {facts}")
             if facts is None:
@@ -190,6 +191,7 @@ class FactScorer(object):
             else:
                 decision = self._get_score(topic, generation, facts, knowledge_source, grounding=grounding, grounding_provided=grounding_provided)
                 score = np.mean([d["is_supported"] for d in decision])
+                wrong_fact = [d["atom"]  for d in decision if not d["is_supported"]]
                 
                 if gamma:
                     init_scores.append(score)
@@ -198,6 +200,7 @@ class FactScorer(object):
                 
                 decisions.append(decision)
                 scores.append(score)
+                wrong_facts.append(wrong_fact)
                 if len(scores) % 10 == 0:
                     self.save_cache()
 
@@ -206,6 +209,7 @@ class FactScorer(object):
         out = {"score": np.mean(scores),
                "respond_ratio": respond_ratio,
                "decisions": decisions,
+               "wrong_facts": wrong_facts,
                "num_facts_per_response": np.mean([len(d) for d in decisions if d is not None])}
 
         if gamma:
@@ -213,7 +217,41 @@ class FactScorer(object):
         
         return out
 
-    def _get_score(self, topic, generation, atomic_facts, knowledge_source, grounding = None, grounding_provided=False, cost_estimate=None):
+    def determine_extrinsic_af(self, topics, wrong_facts, groundings, generations = None,  verbose=False, grounding_provided=False):
+        if verbose:
+            topics = tqdm(topics)
+
+        scores = []
+        decisions = []
+        extrinsic_facts = []
+
+        for topic, generation, facts, grounding in zip(topics, generations, wrong_facts, groundings):
+            print(f"Running for the follow wrongly classified facts to check if they are intrinsic or extrinsic. {facts}")
+            if facts is None:
+                decisions.append(None)
+            else:
+                decision = self._get_score(topic, generation, facts, knowledge_source=None, grounding=grounding,
+                                           grounding_provided=grounding_provided, check_extrinsic=True)
+                score = np.mean([d["is_supported"] for d in decision])
+                extrinsic_fact = [d["atom"] for d in decision if not d["is_supported"]]
+
+                decisions.append(decision)
+                scores.append(score)
+                extrinsic_facts.append(extrinsic_fact)
+                if len(scores) % 10 == 0:
+                    self.save_cache()
+
+        self.save_cache()
+
+        extrinsic_out = {"score": np.mean(scores),
+               "decisions": decisions,
+               "extrinsic_facts": extrinsic_facts,
+               }
+        print ("The following wrongly classified facts are Extrinsic: \n {}".format(extrinsic_facts))
+
+        return extrinsic_out
+
+    def _get_score(self, topic, generation, atomic_facts, knowledge_source, grounding = None, grounding_provided=False, cost_estimate=None, check_extrinsic = False):
         decisions = []
         total_words = 0
         for atom in atomic_facts:
@@ -225,14 +263,24 @@ class FactScorer(object):
                     passages = [{'title': 'Article', 'text': ground} for ground in grounding]
                 else: #@todo: some gpu issue here, fix it later
                     passages = self.retrieval[knowledge_source].get_passages(topic, atom, k=5)
-                definition = "Answer the question about {} based on the given context.\n\n".format(topic)
+
+                if check_extrinsic:
+                    definition = "Does the provided text contain any information related to the Input statement?.\n\n"
+                else:
+                    definition = "Answer the question about {} based on the given context.\n\n".format(topic)
+
                 context = ""
                 for psg_idx, psg in enumerate(reversed(passages)):
                     context += "Title: {}\nText: {}\n\n".format(psg["title"], psg["text"].replace("<s>", "").replace("</s>", ""))
                 definition += context.strip()
                 if not definition[-1] in string.punctuation:
                     definition += "."
-                prompt = "{}\n\nInput: {} True or False?\nOutput:".format(definition.strip(), atom.strip())
+
+                if check_extrinsic:
+                    definition.replace("Title: Article", "")
+                    prompt = "{}\n\nInput: {} \n This statement is discussed in the above provided text. True or False?\nOutput:".format(definition.strip(), atom.strip())
+                else:
+                    prompt = "{}\n\nInput: {} True or False?\nOutput:".format(definition.strip(), atom.strip())
 
                 if cost_estimate:
                     if cost_estimate == "consider_cache" and (prompt.strip() + "_0") not in self.lm.cache_dict:
@@ -333,7 +381,7 @@ def parse_options(args: List[str]) -> argparse.Namespace:
     return args
 
 
-def main(args: Optional[List[str]] = None) -> None:
+def factscrorer_main(args: Optional[List[str]] = None) -> tuple:
 
 
     args = parse_options(sys.argv[1:] if args is None else args)
@@ -389,6 +437,17 @@ def main(args: Optional[List[str]] = None) -> None:
     # Save out as a json file
     with open(args.input_path.replace(".jsonl", f"_factscore_output.json"), 'w') as f:
         f.write(json.dumps(out) + "\n")
+
+    # Check if the wrongly classified facts are "wrong" or just not present in the article.
+    extrinsic_out = fs.determine_extrinsic_af(topics=topics, wrong_facts=out["wrong_facts"], groundings=groundings,
+                                              generations=generations,grounding_provided=args.grounding_provided)
+
+    logging.critical("FActScore = %.1f%%" % (100 * out["score"]))
+    if "init_score" in out:
+        logging.critical("FActScore w/o length penalty = %.1f%%" % (100 * out["init_score"]))
+    logging.critical("Respond ratio = %.1f%%" % (100 * out["respond_ratio"]))
+    logging.critical("# Atomic facts per valid response = %.1f" % (out["num_facts_per_response"]))
+    return (out, extrinsic_out)
 
 
 if __name__ == '__main__':

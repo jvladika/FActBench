@@ -11,7 +11,6 @@ import wandb
 
 runs = [
 'ydt4g04k'
-
 ]
 
 

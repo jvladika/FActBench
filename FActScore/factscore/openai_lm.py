@@ -58,7 +58,9 @@ def call_ChatGPT(message, openai_client, model_name="gpt-4o-mini", max_len=16384
         try:
             response = openai_client.chat.completions.create(
                 model=model_name,
-                messages=message,
+                messages=[
+                    {"role": "user", "content": message},
+                ],
                 max_tokens=max_len,
                 temperature=temp)
             received = True
@@ -84,7 +86,7 @@ def call_GPT3(prompt, openai_client, model_name="gpt-4o-mini", max_len=16384, te
     while not received:
         try:
             response = openai_client.chat.completions.create(
-                model=model_name,
+                model="gpt-4o-mini",
                 messages=[
                     {"role": "user", "content": prompt},
                 ],
