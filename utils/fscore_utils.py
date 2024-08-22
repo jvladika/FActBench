@@ -58,7 +58,7 @@ def csv_to_jsonl_for_factscore(results_dir):
 
         df = pd.read_csv(run, encoding='ISO-8859-1')
         #df = df.head(2)
-        df = df.loc[[3,15,16,18]]
+        df = df.loc[[3,18]]
 
         # add columns required by factscore
         df["topic"] = get_wiki_topic(df["prediction-summary"])

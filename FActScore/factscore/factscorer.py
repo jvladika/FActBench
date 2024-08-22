@@ -169,6 +169,7 @@ class FactScorer(object):
 
         respond_ratio = np.mean([facts is not None for facts in atomic_facts])
 
+        # todo: update this
         if "ChatGPT" in self.model_name:
             # estimate the total cost of response generation
             total_words = 0
@@ -192,8 +193,8 @@ class FactScorer(object):
             else:
                 decision = self._get_score(topic, generation, facts, knowledge_source, grounding=grounding, grounding_provided=grounding_provided)
                 score = np.mean([d["is_supported"] for d in decision])
-                wrong_fact = [d["atom"]  for d in decision if not d["is_supported"]]
-                
+                wrong_fact = [{"atom":d["atom"], "idx":idx}  for idx, d in enumerate(decision) if not d["is_supported"]]
+
                 if gamma:
                     init_scores.append(score)
                     penalty = 1.0 if len(facts)>gamma else np.exp(1-gamma/len(facts))
@@ -234,7 +235,8 @@ class FactScorer(object):
                 decision = self._get_score(topic, generation, facts, knowledge_source=None, grounding=grounding,
                                            grounding_provided=grounding_provided, check_extrinsic=True)
                 score = np.mean([d["is_supported"] for d in decision])
-                extrinsic_fact = [d["atom"] for d in decision if not d["is_supported"]]
+                extrinsic_fact = [{"atom":d["atom"], "idx":d["idx"]}  for idx, d in enumerate(decision) if not d["is_supported"]]
+
 
                 decisions.append(decision)
                 scores.append(score)
@@ -244,13 +246,13 @@ class FactScorer(object):
 
         self.save_cache()
 
-        extrinsic_out = {"score": np.mean(scores),
+        extrinsic_af = {"score": np.mean(scores),
                "decisions": decisions,
                "extrinsic_facts": extrinsic_facts,
                }
         print ("The following wrongly classified facts are Extrinsic: \n {}".format(extrinsic_facts))
 
-        return extrinsic_out
+        return extrinsic_af
 
     def get_extrinsic_score(self, topics, extrinsic_facts, generations = None,  verbose=False, grounding_provided=False):
         if verbose:
@@ -262,7 +264,7 @@ class FactScorer(object):
             self.register_knowledge_source(knowledge_source)
         scores = []
         decisions = []
-        correct_extrinsic_facts = []
+        extrinsic_hallucinated_facts = []
 
 
         for topic, generation, facts in zip(topics, generations, extrinsic_facts):
@@ -274,28 +276,39 @@ class FactScorer(object):
                 decision = self._get_score(topic, generation, facts, knowledge_source=knowledge_source,
                                            grounding_provided=grounding_provided, check_extrinsic=False)
                 score = np.mean([d["is_supported"] for d in decision])
-                correct_extrinsic_fact = [d["atom"] for d in decision if not d["is_supported"]]
+                extrinsic_hallucinated_fact = [{"atom":d["atom"], "idx":d["idx"]}  for idx, d in enumerate(decision) if not d["is_supported"]]
+
 
                 decisions.append(decision)
                 scores.append(score)
-                correct_extrinsic_facts.append(correct_extrinsic_fact)
+                extrinsic_hallucinated_facts.append(extrinsic_hallucinated_fact)
                 if len(scores) % 10 == 0:
                     self.save_cache()
 
         self.save_cache()
 
-        extrinsic_out = {"score": np.mean(scores),
+        self.extrinsic_out = {"score": np.mean(scores),
+               #"respond_ratio": respond_ratio,
                "decisions": decisions,
-               "extrinsic_facts": extrinsic_facts,
-               }
+               "wrong_facts": extrinsic_hallucinated_facts,
+               "num_facts_per_response": np.mean([len(d) for d in decisions if d is not None])}
+
         print ("The following facts are still classified as hallucinations after Extrinsic Fact Checking: \n {}".format(extrinsic_facts))
-        return extrinsic_out
+        return self.extrinsic_out
 
 
     def _get_score(self, topic, generation, atomic_facts, knowledge_source, grounding = None, grounding_provided=False, cost_estimate=None, check_extrinsic = False):
         decisions = []
         total_words = 0
-        for atom in atomic_facts:
+        for atomic_fact in atomic_facts:
+            if not isinstance(atomic_fact, str):
+                atom = atomic_fact["atom"]
+                idx = atomic_fact["idx"]
+            else:
+                atom = atomic_fact
+                idx = None
+
+
             atom = atom.strip()
             if self.lm:
                 if grounding_provided:
@@ -359,7 +372,7 @@ class FactScorer(object):
                 npprob = self.npm[knowledge_source].get_probabilty(topic, atom)
                 is_supported = npprob > 0.3
 
-            decisions.append({"atom": atom, "is_supported": is_supported})
+            decisions.append({"atom": atom, "is_supported": is_supported, "idx": idx})
 
         if cost_estimate:
             return total_words

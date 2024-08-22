@@ -4,9 +4,12 @@ import logging
 from typing import List, Optional
 import sys
 from FActScore.factscore.factscorer import FactScorer
-from utils.wandb_utils import wandb_init_run
+from utils.wandb_utils import wandb_init_run, wandb_push_json, wandb_push_table
 from utils.fscore_utils import csv_to_jsonl_for_factscore
+from datetime import datetime
 import nltk
+import numpy as np
+import os
 nltk.download('punkt_tab')
 from dotenv import load_dotenv
 load_dotenv()
@@ -19,6 +22,7 @@ class GenFact:
                             datefmt='%m/%d/%Y %H:%M:%S',
                             level=logging.ERROR if self.args.print_rate_limit_error else logging.CRITICAL)
 
+        self.log_dir = self.create_log_folder()
         self.fs = FactScorer(model_name=self.args.model_name,
                         data_dir=self.args.data_dir,
                         model_dir=self.args.model_dir,
@@ -28,7 +32,7 @@ class GenFact:
                         abstain_detection_type=self.args.abstain_detection_type,
                         grounding_provided=self.args.grounding_provided)
 
-    def run_factscrorer(self,) -> dict:
+    def run_factscrorer(self, grounding_provided:bool) -> dict:
 
         tot = 0
         topics, generations, atomic_facts, groundings = [], [], [], []
@@ -59,7 +63,8 @@ class GenFact:
                            atomic_facts=atomic_facts if self.args.use_atomic_facts else None,
                            knowledge_source=self.args.knowledge_source,
                            verbose=self.args.verbose,
-                           grounding_provided=self.args.grounding_provided)
+                           grounding_provided=grounding_provided)
+        print ("Using intrinsic Fact Checking")
         logging.critical("FActScore = %.1f%%" % (100 * out["score"]))
         if "init_score" in out:
             logging.critical("FActScore w/o length penalty = %.1f%%" % (100 * out["init_score"]))
@@ -70,26 +75,60 @@ class GenFact:
         with open(args.input_path.replace(".jsonl", f"_factscore_output.json"), 'w') as f:
             f.write(json.dumps(out) + "\n")
 
-        self.factscore_logs = {"topics": topics, "wrong_facts": out["wrong_facts"], "groundings": groundings,
-                               "generations": generations, "grounding_provided": self.args.grounding_provided}
+        self.factscore_logs = {"score": out["score"],"topics": topics, "decisions": out["decisions"], "wrong_facts": out["wrong_facts"], "groundings": groundings,
+                               "generations": generations, "grounding_provided": grounding_provided}
+
         return self.factscore_logs
+
+    def write_logs(self, out:json, fname:str):
+        fname = os.path.join(self.log_dir,fname)
+        with open(fname, 'w') as fp:
+            json.dump(out, fp)
 
     def fs_get_extrinsic_af(self, topics, wrong_facts, groundings,generations, grounding_provided):
         # Check if the wrongly classified facts are "wrong" or just not present in the article.
         extrinsic_af = self.fs.get_extrinsic_af(topics=topics, wrong_facts=wrong_facts, groundings=groundings,
                                                   generations=generations, grounding_provided=grounding_provided)
 
-        #logging.critical("FActScore = %.1f%%" % (100 * extrinsic_out["score"]))
-        #if "init_score" in extrinsic_out:
-        #    logging.critical("FActScore w/o length penalty = %.1f%%" % (100 * out["init_score"]))
-        #logging.critical("Respond ratio = %.1f%%" % (100 * out["respond_ratio"]))
-        #logging.critical("# Atomic facts per valid response = %.1f" % (out["num_facts_per_response"]))
+
         return extrinsic_af
     def fs_extrinsic_score(self,fs_extrinsic_af:dict):
         extrinsic_out = self.fs.get_extrinsic_score(topics = self.factscore_logs["topics"], extrinsic_facts=fs_extrinsic_af["extrinsic_facts"],
                                                     generations = self.factscore_logs["generations"],  verbose=False,
                                                     grounding_provided=False)
         return extrinsic_out
+
+    def create_log_folder(self, ):
+        today = datetime.now()
+        folder = "results/genfact/" + today.strftime('%Y%m%d%h%m')
+        os.makedirs(folder, exist_ok=True)
+        print(f"Run outputs would be locally stored at {folder}")
+        return folder
+
+    def get_updated_score(self, factscore_out, fs_extrinsic_af) ->float:
+        decision_before = factscore_out["decisions"]
+        decision_after = fs_extrinsic_af["decisions"]
+        count = 0
+
+
+        for idx, afs in enumerate(decision_after):
+            if len(afs) > 0:
+                for af in afs:
+                    if decision_before[idx][af["idx"]]['is_supported'] != af["is_supported"]:
+                        print(f"Updating the decision for the Atomic Fact: {af} for sample {idx}")
+                        decision_before[idx][af["idx"]]['is_supported'] = af["is_supported"]
+                        count += 1
+        scores = [np.mean([d["is_supported"]  for d in decisions]) for decisions in decision_before]
+        hallucinations = [[d for d in decisions if not d["is_supported"]] for decisions in decision_before]
+
+        updated_score = np.mean(scores)
+        logging.critical("FActScore After extrinsic check = %.1f%%" % (100 * updated_score))
+        logging.critical(f"Updated decision on {str(count)} Facts after running Extrinsic check")
+        #if "init_score" in extrinsic_out:
+        #    logging.critical("FActScore w/o length penalty = %.1f%%" % (100 * out["init_score"]))
+        #logging.critical("Respond ratio = %.1f%%" % (100 * out["respond_ratio"]))
+        #logging.critical("# Atomic facts per valid response = %.1f" % (out["num_facts_per_response"]))
+        return updated_score, hallucinations
 
 def parse_options(args: List[str]) -> argparse.Namespace:
     parser = argparse.ArgumentParser()
@@ -148,6 +187,8 @@ def parse_options(args: List[str]) -> argparse.Namespace:
     return args
 
 
+
+
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
@@ -173,15 +214,40 @@ if __name__ == '__main__':
     genFact = GenFact(args)
     wandb_init_run(run_path=args.input_path, config = genFact.args)
 
-    factscore_out = genFact.run_factscrorer()
+
+    print ("Running Vanilla FactScore")
+    factscore_out_vanilla = genFact.run_factscrorer(grounding_provided = False )
+    genFact.write_logs(factscore_out_vanilla, fname="factscore_vanilla.json")
+
+
+
+    print ("Running Factscore with grounded document")
+    factscore_out = genFact.run_factscrorer(grounding_provided=args.grounding_provided)
+    genFact.write_logs(factscore_out, fname="factscore_grounded.json")
+
+
     fs_extrinsic_af = genFact.fs_get_extrinsic_af(topics = factscore_out["topics"], wrong_facts = factscore_out["wrong_facts"],
                 groundings=  factscore_out["groundings"], generations = factscore_out["generations"],
                                             grounding_provided= factscore_out["grounding_provided"])
     fs_extrinsic_out = genFact.fs_extrinsic_score(fs_extrinsic_af)
+    genFact.write_logs(factscore_out, fname="factscore_grounded_extrinsic.json")
 
+
+    updated_score, updated_wrong_facts = genFact.get_updated_score(factscore_out,fs_extrinsic_out)
+
+    wandb_table = {"fs_wiki": factscore_out_vanilla["score"], "fs_grounded": factscore_out["score"],
+                   "fs_grounded_wiki": updated_score}
+    wandb_push_json(wandb_table)
+
+    wandb_table = {"generations": factscore_out["generations"], "hallucinations": updated_wrong_facts }
+    wandb_push_table(wandb_table)
 
     deberta_out = factscore_out
     deberta_extrinsic_out = fs_extrinsic_af
+
+
+
+
 
 
 
