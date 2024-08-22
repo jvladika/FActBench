@@ -1,4 +1,4 @@
-from factscore.lm import LM
+from FActScore.factscore.lm import LM
 from openai import OpenAI, BadRequestError
 import sys
 import time
@@ -39,9 +39,9 @@ class OpenAIModel(LM):
             # Get the output from the response
             output = response.choices[0].message.content.strip()
             return output, response
-        elif self.model_name == "InstructGPT":
+        elif self.model_name == "gpt-4o-mini":
             # Call API
-            response = call_GPT3(prompt, self.client, temp=self.temp)
+            response = call_GPT4(prompt, self.client, temp=self.temp)
             # Get the output from the response
             output = response.choices[0].message.content
             return output, response
@@ -78,7 +78,7 @@ def call_ChatGPT(message, openai_client, model_name="gpt-4o-mini", max_len=16384
     return response
 
 
-def call_GPT3(prompt, openai_client, model_name="gpt-4o-mini", max_len=16384, temp=0.7, num_log_probs=0):
+def call_GPT4(prompt, openai_client, model_name="gpt-4o-mini", max_len=16384, temp=0.7, num_log_probs=0):
     # call GPT-3 API until result is provided and then return it
     response = None
     received = False

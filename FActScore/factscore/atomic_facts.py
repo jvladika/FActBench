@@ -12,7 +12,7 @@ import os
 import time
 from nltk.tokenize import sent_tokenize
 
-from factscore.openai_lm import OpenAIModel
+from FActScore.factscore.openai_lm import OpenAIModel
 
 nltk.download("punkt")
 

@@ -7,7 +7,7 @@ Initial setup
 cd FActScore
 python -m venv fscore
 source fscore/bin/activate
-pip install --upgrade factscore
+pip install --upgrade factscore (not needed anymore)
 python -m spacy download en_core_web_sm
 python -m factscore.download_data
 pip install -r requirements.txt

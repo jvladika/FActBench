@@ -1,11 +1,15 @@
-import glob
-import pandas as pd
 import argparse
 import json
 import logging
 from typing import List, Optional
 import sys
 from FActScore.factscore.factscorer import FactScorer
+from utils.wandb_utils import wandb_init_run
+from utils.fscore_utils import csv_to_jsonl_for_factscore
+import nltk
+nltk.download('punkt_tab')
+from dotenv import load_dotenv
+load_dotenv()
 class GenFact:
     def __init__(self, args: Optional[List[str]] = None):
 
@@ -70,9 +74,9 @@ class GenFact:
                                "generations": generations, "grounding_provided": self.args.grounding_provided}
         return self.factscore_logs
 
-    def run_fs_extrinsic(self, topics, wrong_facts, groundings,generations, grounding_provided):
+    def fs_get_extrinsic_af(self, topics, wrong_facts, groundings,generations, grounding_provided):
         # Check if the wrongly classified facts are "wrong" or just not present in the article.
-        extrinsic_out = self.fs.determine_extrinsic_af(topics=topics, wrong_facts=wrong_facts, groundings=groundings,
+        extrinsic_af = self.fs.get_extrinsic_af(topics=topics, wrong_facts=wrong_facts, groundings=groundings,
                                                   generations=generations, grounding_provided=grounding_provided)
 
         #logging.critical("FActScore = %.1f%%" % (100 * extrinsic_out["score"]))
@@ -80,8 +84,12 @@ class GenFact:
         #    logging.critical("FActScore w/o length penalty = %.1f%%" % (100 * out["init_score"]))
         #logging.critical("Respond ratio = %.1f%%" % (100 * out["respond_ratio"]))
         #logging.critical("# Atomic facts per valid response = %.1f" % (out["num_facts_per_response"]))
+        return extrinsic_af
+    def fs_extrinsic_score(self,fs_extrinsic_af:dict):
+        extrinsic_out = self.fs.get_extrinsic_score(topics = self.factscore_logs["topics"], extrinsic_facts=fs_extrinsic_af["extrinsic_facts"],
+                                                    generations = self.factscore_logs["generations"],  verbose=False,
+                                                    grounding_provided=False)
         return extrinsic_out
-
 
 def parse_options(args: List[str]) -> argparse.Namespace:
     parser = argparse.ArgumentParser()
@@ -139,41 +147,6 @@ def parse_options(args: List[str]) -> argparse.Namespace:
     args = parser.parse_args()
     return args
 
-def csv_to_jsonl_for_factscore(results_dir):
-
-    # get a list of all logs
-    extension = 'csv'
-    runs = glob.glob('{}/*.{}'.format(results_dir, extension))
-
-    jsonl_paths = []
-    for run in runs:
-        path_d = run.replace('.csv', '.jsonl')
-        jsonl_paths.append(path_d)
-
-        df = pd.read_csv(run, encoding='ISO-8859-1')
-        df = df.head(2)
-        #df = df.loc[[3,15,16,18]]
-
-        # add columns required by factscore
-        df["topic"] = "the provided article"
-        df["cat"] = [[] for i in range(len(df))]
-
-        # only keep the columns needed for factscore
-        df = df[[ "article", "prediction-summary", "topic","cat"]]
-        df.columns = ["input", "output", "topic", "cat"]
-
-
-        #convert each row to a dict and write as a jsonl
-        df_jsonl = df.to_dict('records')
-        with open(path_d, 'w') as out:
-            for ddict in df_jsonl:
-                jout = json.dumps(ddict) + '\n'
-                out.write(jout)
-
-    return jsonl_paths
-
-
-
 
 if __name__ == '__main__':
 
@@ -198,14 +171,17 @@ if __name__ == '__main__':
 
 
     genFact = GenFact(args)
+    wandb_init_run(run_path=args.input_path, config = genFact.args)
 
     factscore_out = genFact.run_factscrorer()
-    fs_extrinsic_out = genFact.run_fs_extrinsic(topics = factscore_out["topics"], wrong_facts = factscore_out["wrong_facts"],
+    fs_extrinsic_af = genFact.fs_get_extrinsic_af(topics = factscore_out["topics"], wrong_facts = factscore_out["wrong_facts"],
                 groundings=  factscore_out["groundings"], generations = factscore_out["generations"],
                                             grounding_provided= factscore_out["grounding_provided"])
+    fs_extrinsic_out = genFact.fs_extrinsic_score(fs_extrinsic_af)
+
 
     deberta_out = factscore_out
-    deberta_extrinsic_out = fs_extrinsic_out
+    deberta_extrinsic_out = fs_extrinsic_af
 
 
 

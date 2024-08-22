@@ -6,12 +6,12 @@ import os
 import logging
 import sys
 from tqdm import tqdm
-from factscore.abstain_detection import is_response_abstained
-from factscore.atomic_facts import AtomicFactGenerator
-from factscore.clm import CLM
-from factscore.npm import NPM
-from factscore.openai_lm import OpenAIModel
-from factscore.retrieval import DocDB, Retrieval
+from FActScore.factscore.abstain_detection import is_response_abstained
+from FActScore.factscore.atomic_facts import AtomicFactGenerator
+from FActScore.factscore.clm import CLM
+from FActScore.factscore.npm import NPM
+from FActScore.factscore.openai_lm import OpenAIModel
+from FActScore.factscore.retrieval import DocDB, Retrieval
 from typing import List, Optional
 
 class FactScorer(object):
@@ -218,7 +218,7 @@ class FactScorer(object):
         
         return out
 
-    def determine_extrinsic_af(self, topics, wrong_facts, groundings, generations = None,  verbose=False, grounding_provided=False):
+    def get_extrinsic_af(self, topics, wrong_facts, groundings, generations = None,  verbose=False, grounding_provided=False):
         if verbose:
             topics = tqdm(topics)
 
@@ -251,6 +251,46 @@ class FactScorer(object):
         print ("The following wrongly classified facts are Extrinsic: \n {}".format(extrinsic_facts))
 
         return extrinsic_out
+
+    def get_extrinsic_score(self, topics, extrinsic_facts, generations = None,  verbose=False, grounding_provided=False):
+        if verbose:
+            topics = tqdm(topics)
+
+        knowledge_source = "enwiki-20230401"
+
+        if knowledge_source not in self.retrieval:
+            self.register_knowledge_source(knowledge_source)
+        scores = []
+        decisions = []
+        correct_extrinsic_facts = []
+
+
+        for topic, generation, facts in zip(topics, generations, extrinsic_facts):
+            print(f"Checking the wrongly classified text through extrinsic fact checking using knowledge source {knowledge_source} for the following facts. \n {facts}")
+            if facts is None:
+                decisions.append(None)
+            else:
+
+                decision = self._get_score(topic, generation, facts, knowledge_source=knowledge_source,
+                                           grounding_provided=grounding_provided, check_extrinsic=False)
+                score = np.mean([d["is_supported"] for d in decision])
+                correct_extrinsic_fact = [d["atom"] for d in decision if not d["is_supported"]]
+
+                decisions.append(decision)
+                scores.append(score)
+                correct_extrinsic_facts.append(correct_extrinsic_fact)
+                if len(scores) % 10 == 0:
+                    self.save_cache()
+
+        self.save_cache()
+
+        extrinsic_out = {"score": np.mean(scores),
+               "decisions": decisions,
+               "extrinsic_facts": extrinsic_facts,
+               }
+        print ("The following facts are still classified as hallucinations after Extrinsic Fact Checking: \n {}".format(extrinsic_facts))
+        return extrinsic_out
+
 
     def _get_score(self, topic, generation, atomic_facts, knowledge_source, grounding = None, grounding_provided=False, cost_estimate=None, check_extrinsic = False):
         decisions = []
