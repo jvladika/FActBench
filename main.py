@@ -13,6 +13,13 @@ import os
 nltk.download('punkt_tab')
 from dotenv import load_dotenv
 load_dotenv()
+
+import numpy as np
+from transformers import AutoTokenizer, AutoModelForSequenceClassification
+import torch
+device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
+
+
 class GenFact:
     def __init__(self, args: Optional[List[str]] = None):
 
@@ -132,6 +139,62 @@ class GenFact:
         #logging.critical("# Atomic facts per valid response = %.1f" % (out["num_facts_per_response"]))
         return updated_score, hallucinations
 
+
+class DebertaNli:
+    def __init__(self, score_out, decisions, groundings):
+
+        self.score_out = score_out
+        self.decisions = decisions
+        self.groundings = groundings
+
+        self.model_name = "tasksource/deberta-base-long-nli"
+        self.tokenizer = AutoTokenizer.from_pretrained(self.model_name)
+        self.model = AutoModelForSequenceClassification.from_pretrained(self.model_name)
+        self.model.to(device)
+
+
+    def run_nli(self,) -> dict:
+        nli_decisions = list()
+
+        for data_instance, article in zip(self.decisions, self.groundings):
+            nli_results = list()
+
+            for atom_instance in data_instance:
+                atom_fact = atom_instance["atom"]
+
+                premise = atom_fact
+                hypothesis = article
+
+                model_input = self.tokenizer(premise, hypothesis, truncation=True, return_tensors="pt")
+                model_output = self.model(model_input["input_ids"].to(device)) 
+                prediction_probs = torch.softmax(model_output["logits"][0], -1).tolist()
+                prediction_probs = np.array(prediction_probs)
+
+                max_index = np.argmax(prediction_probs)
+                if  max_index == 0:
+                    nli_class = "entailment"
+                elif max_index == 1:
+                    nli_class = "neutral"
+                elif max_index == 2:
+                    nli_class = "contradiction"
+                nli_results.append(nli_class)
+
+            nli_decisions.append(nli_results)
+        
+        new_decisions = list()
+        for decision, nli_prediction in zip(self.decisions, nli_decisions):
+            new_list = list()
+            for dec, pred in zip(decision, nli_prediction):
+                dec["nli_prediction"] = pred
+                new_list.append(dec)
+
+            new_decisions.append(new_list)
+        
+        self.score_out["decisions"] = new_decisions
+
+        return self.score_out
+
+
 def parse_options(args: List[str]) -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument('--input_path',
@@ -151,13 +214,13 @@ def parse_options(args: List[str]) -> argparse.Namespace:
     #@todo: Fix these paths to be defined from the majorityvoter or command line and revert this to the original factscore code stucture
     parser.add_argument('--data_dir',
                         type=str,
-                        default="/Users/anumafzal/PycharmProjects/FactSumm/FActScore/.cache/factscore/")
+                        default="./FActScore/.cache/factscore/")
     parser.add_argument('--model_dir',
                         type=str,
-                        default="/Users/anumafzal/PycharmProjects/FactSumm/FActScore/.cache/factscore/")
+                        default="./FActScore/.cache/factscore/")
     parser.add_argument('--cache_dir',
                         type=str,
-                        default="/Users/anumafzal/PycharmProjects/FactSumm/FActScore/.cache/factscore/")
+                        default="./FActScore/.cache/factscore/")
     parser.add_argument('--knowledge_source',
                         type=str,
                         default=None)
@@ -214,7 +277,7 @@ if __name__ == '__main__':
 
 
     genFact = GenFact(args)
-    wandb_init_run(run_path=args.input_path, config = genFact.args)
+    #wandb_init_run(run_path=args.input_path, config = genFact.args)
 
 
     print ("Running Vanilla FactScore")
@@ -237,15 +300,26 @@ if __name__ == '__main__':
 
     updated_score, updated_wrong_facts = genFact.get_updated_score(factscore_out,fs_extrinsic_out)
 
+    #WANDB part was giving me errors so I temporarily commented it out.
+    ''' 
     wandb_table = {"fs_wiki": factscore_out_vanilla["score"], "fs_grounded": factscore_out["score"],
                    "fs_grounded_wiki": updated_score}
     wandb_push_json(wandb_table)
 
     wandb_table = {"generations": factscore_out["generations"], "hallucinations": updated_wrong_facts }
     wandb_push_table(wandb_table)
+    '''
 
-    deberta_out = factscore_out
-    deberta_extrinsic_out = fs_extrinsic_af
+    #Creates new class for deberta predictions. Loads a model from HuggingFace.
+    deberta_nli = DebertaNli(score_out = factscore_out,
+                             decisions =  factscore_out["decisions"],
+                              groundings = factscore_out["groundings"])
+    
+    #Output is the same as factscore_out, but with a new attribute in dictionaries with NLI predictions. 
+    deberta_out = deberta_nli.run_nli()
+
+    #deberta_extrinsic_out = fs_extrinsic_af
+
 
 
 

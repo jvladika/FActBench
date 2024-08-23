@@ -41,7 +41,7 @@ class FactScorer(object):
         self.data_dir = data_dir
         self.cache_dir = cache_dir
         if not os.path.exists(cache_dir):
-            os.makedirs(cache_dir)
+            pass 
 
         self.af_generator = None
         self.cost_estimate = cost_estimate

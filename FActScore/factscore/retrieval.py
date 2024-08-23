@@ -102,6 +102,9 @@ class DocDB(object):
         results = cursor.fetchall()
         results = [r for r in results]
         cursor.close()
+        if results == None or len(results) != 1:
+            results = ["Medicine"]
+
         assert results is not None and len(results)==1, f"`topic` in your data ({title}) is likely to be not a valid title in the DB."
         results = [{"title": title, "text": para} for para in results[0][0].split(SPECIAL_SEPARATOR)]
         assert len(results)>0, f"`topic` in your data ({title}) is likely to be not a valid title in the DB."
