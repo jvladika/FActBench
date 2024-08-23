@@ -99,8 +99,10 @@ class GenFact:
         return extrinsic_out
 
     def create_log_folder(self, ):
-        today = datetime.now()
-        folder = "results/genfact/" + today.strftime('%Y%m%d%h%m')
+        date_time =  '{date:%Y-%m-%d_%H-%M-%S}'.format( date=datetime.now() )
+        run_name = os.path.basename(self.args.input_path).replace('.jsonl','')
+
+        folder = os.path.join("results","genfact", run_name, date_time)
         os.makedirs(folder, exist_ok=True)
         print(f"Run outputs would be locally stored at {folder}")
         return folder
