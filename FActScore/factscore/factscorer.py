@@ -372,7 +372,10 @@ class FactScorer(object):
                 npprob = self.npm[knowledge_source].get_probabilty(topic, atom)
                 is_supported = npprob > 0.3
 
-            decisions.append({"atom": atom, "is_supported": is_supported, "idx": idx})
+            if check_extrinsic:
+                decisions.append({"atom": atom, "is_supported": is_supported, "idx": idx, "wiki_context": context})
+            else:
+                decisions.append({"atom": atom, "is_supported": is_supported, "idx": idx})
 
         if cost_estimate:
             return total_words

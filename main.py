@@ -17,8 +17,8 @@ load_dotenv()
 import numpy as np
 from transformers import AutoTokenizer, AutoModelForSequenceClassification
 import torch
-device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
-
+#device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
+device = torch.device("cpu")
 
 class GenFact:
     def __init__(self, args: Optional[List[str]] = None):
@@ -152,8 +152,24 @@ class DebertaNli:
         self.model = AutoModelForSequenceClassification.from_pretrained(self.model_name)
         self.model.to(device)
 
+    def get_nli_class(self, premise, hypothesis):
+        model_input = self.tokenizer(premise, hypothesis, truncation=True, return_tensors="pt")
+        model_output = self.model(model_input["input_ids"].to(device)) 
+        prediction_probs = torch.softmax(model_output["logits"][0], -1).tolist()
+        prediction_probs = np.array(prediction_probs)
 
-    def run_nli(self,) -> dict:
+        max_index = np.argmax(prediction_probs)
+        if  max_index == 0:
+            nli_class = "entailment"
+        elif max_index == 1:
+            nli_class = "neutral"
+        elif max_index == 2:
+            nli_class = "contradiction"
+
+        return nli_class
+
+
+    def check_intrinsic(self,) -> dict:
         nli_decisions = list()
 
         for data_instance, article in zip(self.decisions, self.groundings):
@@ -161,9 +177,40 @@ class DebertaNli:
 
             for atom_instance in data_instance:
                 atom_fact = atom_instance["atom"]
-
                 premise = atom_fact
                 hypothesis = article
+
+                nli_class = self.get_nli_class(premise, hypothesis)
+                nli_results.append(nli_class)
+
+            nli_decisions.append(nli_results)
+        
+        new_decisions = list()
+        for decision, nli_prediction in zip(self.decisions, nli_decisions):
+            new_list = list()
+            for dec, pred in zip(decision, nli_prediction):
+                dec["nli_intrinsic"] = pred
+                new_list.append(dec)
+
+            new_decisions.append(new_list)
+        
+        self.decisions = new_decisions            
+        self.score_out["decisions"] = new_decisions
+        return self.score_out
+    
+
+    def check_extrinsic(self,) -> dict:
+        nli_decisions = list()
+
+        for data_instance in self.decisions:
+            nli_results = list()
+
+            for atom_instance in data_instance:
+                atom_fact = atom_instance["atom"]
+                atom_wiki_context = atom_instance["wiki_context"]
+
+                premise = atom_fact
+                hypothesis = atom_wiki_context
 
                 model_input = self.tokenizer(premise, hypothesis, truncation=True, return_tensors="pt")
                 model_output = self.model(model_input["input_ids"].to(device)) 
@@ -180,16 +227,17 @@ class DebertaNli:
                 nli_results.append(nli_class)
 
             nli_decisions.append(nli_results)
-        
+
         new_decisions = list()
         for decision, nli_prediction in zip(self.decisions, nli_decisions):
             new_list = list()
             for dec, pred in zip(decision, nli_prediction):
-                dec["nli_prediction"] = pred
+                dec["nli_extrinsic"] = pred
                 new_list.append(dec)
 
             new_decisions.append(new_list)
-        
+
+        self.decisions = new_decisions            
         self.score_out["decisions"] = new_decisions
 
         return self.score_out
@@ -316,9 +364,10 @@ if __name__ == '__main__':
                               groundings = factscore_out["groundings"])
     
     #Output is the same as factscore_out, but with a new attribute in dictionaries with NLI predictions. 
-    deberta_out = deberta_nli.run_nli()
+    deberta_out = deberta_nli.check_intrinsic()
 
-    #deberta_extrinsic_out = fs_extrinsic_af
+    deberta_nli.score_out = fs_extrinsic_out    
+    deberta_extrinsic_out = deberta_nli.check_extrinsic()
 
 
 
