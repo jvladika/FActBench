@@ -13,6 +13,8 @@ from FActScore.factscore.npm import NPM
 from FActScore.factscore.openai_lm import OpenAIModel
 from FActScore.factscore.retrieval import DocDB, Retrieval
 from typing import List, Optional
+from utils.search_wiki import search_wiki
+from utils.fscore_utils import get_wiki_topic
 
 class FactScorer(object):
 
@@ -274,7 +276,7 @@ class FactScorer(object):
             else:
 
                 decision = self._get_score(topic, generation, facts, knowledge_source=knowledge_source,
-                                           grounding_provided=grounding_provided, check_extrinsic=False)
+                                           grounding_provided=grounding_provided, check_extrinsic=False, get_topic_per_af = True)
                 score = np.mean([d["is_supported"] for d in decision])
                 extrinsic_hallucinated_fact = [{"atom":d["atom"], "idx":d["idx"]}  for idx, d in enumerate(decision) if not d["is_supported"]]
 
@@ -297,7 +299,31 @@ class FactScorer(object):
         return self.extrinsic_out
 
 
-    def _get_score(self, topic, generation, atomic_facts, knowledge_source, grounding = None, grounding_provided=False, cost_estimate=None, check_extrinsic = False):
+    def search_passage_till_success(self, topic, atom, generation, knowledge_source) -> List:
+        try:
+            passages = self.retrieval[knowledge_source].get_passages(topic, atom, k=5)
+        except:
+            # try all suggested topics until a match is found
+            topics = search_wiki(generation)
+            if not topic:
+                # if we are in the get topic per AF mode. The LLM generated topic would be tested first.
+                llm_generate_topic = get_wiki_topic([atom])[0]
+                topics.insert(0,llm_generate_topic)
+
+            success = False
+            idx = 0
+            while (success == False):
+                try:
+                    assert idx < len(topics), f"Exhausted all options, no DB topic match found!"
+                    topic = topics[idx]
+                    passages = self.retrieval[knowledge_source].get_passages(topic, atom, k=5)
+                    success = True
+                except:
+                    idx += 1
+        return passages
+
+    def _get_score(self, topic, generation, atomic_facts, knowledge_source, grounding = None, grounding_provided=False,
+                   cost_estimate=None, check_extrinsic = False, get_topic_per_af = False):
         decisions = []
         total_words = 0
         for atomic_fact in atomic_facts:
@@ -307,16 +333,18 @@ class FactScorer(object):
             else:
                 atom = atomic_fact
                 idx = None
-
-
             atom = atom.strip()
             if self.lm:
                 if grounding_provided:
                     if isinstance(grounding, str):
                         grounding = [grounding]
                     passages = [{'title': 'Article', 'text': ground} for ground in grounding]
-                else: #@todo: some gpu issue here, fix it later
-                    passages = self.retrieval[knowledge_source].get_passages(topic, atom, k=5)
+                elif get_topic_per_af:
+                    # passing empty topic would force the retriever the get a llm generated topic
+                    passages = self.search_passage_till_success(topic = '', atom = atom, generation=atom,
+                                                       knowledge_source=knowledge_source)
+                else:
+                    passages = self.search_passage_till_success(topic, atom, generation, knowledge_source)
 
                 if check_extrinsic:
                     definition = "Does the provided text contain any information related to the Input statement?.\n\n"
