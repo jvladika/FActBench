@@ -40,7 +40,7 @@ def wandb_push_table(tab:json):
     wandb.log({"data_table": table}, commit=True)
 
 
-def wandb_init_run(run_path:str, config = None, wandb_project_name = "GenFact", entity = "anumafzal"
+def wandb_init_run(run_path:str, config = None, wandb_project_name = "factgen", entity = "sebis19"
                    ):
     wandb_setup()
     wandb_mode = "online"

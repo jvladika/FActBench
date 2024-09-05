@@ -4,6 +4,8 @@ from typing import List
 from openai import OpenAI, BadRequestError
 import os, sys, logging, time, json
 import numpy as np
+import re
+from utils.search_wiki import search_wiki
 
 def get_openai_key():
     openai_tok = os.environ.get("OPENAI_API_KEY")
@@ -16,7 +18,7 @@ def get_wiki_topic(query:list) -> List:
     num_rate_errors = 0
 
     openai_client = OpenAI(api_key=get_openai_key())
-    prompts = [(f"Map the provided text to an existing wikipedia article that describes it the best. Please only output the name of the article and nothing else."
+    prompts = [(f"Your task it to Map the provided text to an existing wikipedia article that describes it the best. Please only output the name of the article name make sure that the word is a valid wikipedia entry."
                 f"\n Text: {q} \n Wikipedia article name: ") for q in query]
     for prompt in prompts:
         received = False
@@ -44,6 +46,8 @@ def get_wiki_topic(query:list) -> List:
                     assert False
                 logging.error("API error: %s (%d)" % (error, num_rate_errors))
 
+    wiki_topics = [wiki_topic.replace ('-', " ") for wiki_topic in wiki_topics]
+    wiki_topics = [wiki_topic.replace('_', " ") for wiki_topic in wiki_topics]
 
     return wiki_topics
 
@@ -64,6 +68,7 @@ def csv_to_jsonl_for_factscore(results_dir):
 
         # add columns required by factscore
         df["topic"] = get_wiki_topic(df["prediction-summary"])
+        #df["topic"] = search_wiki(df["prediction-summary"])
         df["cat"] = [[] for i in range(len(df))]
 
         # only keep the columns needed for factscore
