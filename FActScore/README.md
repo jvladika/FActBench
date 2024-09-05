@@ -86,7 +86,7 @@ There're two sets of prompt entities, `data/labeled/prompt_entities.txt` (183 en
 You can prompt your LM with your own prompt (we used `Question: Tell me a bio of <entity>.`) and use the following code.
 
 ```python
-from factscore.factscorer import FactScorer
+from FActScore.factscore.factscorer import FactScorer
 
 fs = FactScorer(openai_key="...")
 
@@ -127,7 +127,7 @@ By default, FActScore uses Wikipedia dump from 2023/04/01. But you can also use 
 The knolwedge source should be ready in a `.jsonl` format, where each line is a dictionary containing `title` and `text`. `text` can either be a string or a list of strings (e.g., sections).
 
 ```python
-from factscore.factscorer import FactScorer
+from FActScore.factscore.factscorer import FactScorer
 
 fs = FactScorer()
 

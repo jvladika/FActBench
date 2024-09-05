@@ -17,8 +17,14 @@ load_dotenv()
 import numpy as np
 from transformers import AutoTokenizer, AutoModelForSequenceClassification
 import torch
+<<<<<<< Updated upstream
 #device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
 device = torch.device("cpu")
+=======
+device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
+
+
+>>>>>>> Stashed changes
 
 class GenFact:
     def __init__(self, args: Optional[List[str]] = None):
@@ -82,9 +88,14 @@ class GenFact:
         with open(args.input_path.replace(".jsonl", f"_factscore_output.json"), 'w') as f:
             f.write(json.dumps(out) + "\n")
 
+<<<<<<< Updated upstream
         self.factscore_logs = {"score": out["score"],"topics": topics, "decisions": out["decisions"], "wrong_facts": out["wrong_facts"], "groundings": groundings,
                                "generations": generations, "grounding_provided": grounding_provided}
 
+=======
+        self.factscore_logs = {"topics": topics, "decisions": out["decisions"], "wrong_facts": out["wrong_facts"], "groundings": groundings,
+                               "generations": generations, "grounding_provided": self.args.grounding_provided}
+>>>>>>> Stashed changes
         return self.factscore_logs
 
     def write_logs(self, out:json, fname:str):
@@ -105,6 +116,7 @@ class GenFact:
                                                     grounding_provided=False)
         return extrinsic_out
 
+<<<<<<< Updated upstream
     def create_log_folder(self, ):
         date_time =  '{date:%Y-%m-%d_%H-%M-%S}'.format( date=datetime.now() )
         run_name = os.path.basename(self.args.input_path).replace('.jsonl','')
@@ -139,6 +151,8 @@ class GenFact:
         #logging.critical("# Atomic facts per valid response = %.1f" % (out["num_facts_per_response"]))
         return updated_score, hallucinations
 
+=======
+>>>>>>> Stashed changes
 
 class DebertaNli:
     def __init__(self, score_out, decisions, groundings):
@@ -152,6 +166,7 @@ class DebertaNli:
         self.model = AutoModelForSequenceClassification.from_pretrained(self.model_name)
         self.model.to(device)
 
+<<<<<<< Updated upstream
     def get_nli_class(self, premise, hypothesis):
         model_input = self.tokenizer(premise, hypothesis, truncation=True, return_tensors="pt")
         model_output = self.model(model_input["input_ids"].to(device)) 
@@ -170,6 +185,10 @@ class DebertaNli:
 
 
     def check_intrinsic(self,) -> dict:
+=======
+
+    def run_nli(self,) -> dict:
+>>>>>>> Stashed changes
         nli_decisions = list()
 
         for data_instance, article in zip(self.decisions, self.groundings):
@@ -177,6 +196,7 @@ class DebertaNli:
 
             for atom_instance in data_instance:
                 atom_fact = atom_instance["atom"]
+<<<<<<< Updated upstream
                 premise = atom_fact
                 hypothesis = article
 
@@ -212,6 +232,12 @@ class DebertaNli:
                 premise = atom_fact
                 hypothesis = atom_wiki_context
 
+=======
+
+                premise = atom_fact
+                hypothesis = article
+
+>>>>>>> Stashed changes
                 model_input = self.tokenizer(premise, hypothesis, truncation=True, return_tensors="pt")
                 model_output = self.model(model_input["input_ids"].to(device)) 
                 prediction_probs = torch.softmax(model_output["logits"][0], -1).tolist()
@@ -227,22 +253,38 @@ class DebertaNli:
                 nli_results.append(nli_class)
 
             nli_decisions.append(nli_results)
+<<<<<<< Updated upstream
 
+=======
+        
+>>>>>>> Stashed changes
         new_decisions = list()
         for decision, nli_prediction in zip(self.decisions, nli_decisions):
             new_list = list()
             for dec, pred in zip(decision, nli_prediction):
+<<<<<<< Updated upstream
                 dec["nli_extrinsic"] = pred
                 new_list.append(dec)
 
             new_decisions.append(new_list)
 
         self.decisions = new_decisions            
+=======
+                dec["nli_prediction"] = pred
+                new_list.append(dec)
+
+            new_decisions.append(new_list)
+        
+>>>>>>> Stashed changes
         self.score_out["decisions"] = new_decisions
 
         return self.score_out
 
 
+<<<<<<< Updated upstream
+=======
+
+>>>>>>> Stashed changes
 def parse_options(args: List[str]) -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument('--input_path',
@@ -368,11 +410,6 @@ if __name__ == '__main__':
 
     deberta_nli.score_out = fs_extrinsic_out    
     deberta_extrinsic_out = deberta_nli.check_extrinsic()
-
-
-
-
-
 
 
 

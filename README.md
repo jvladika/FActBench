@@ -7,7 +7,7 @@ Initial setup
 cd FActScore
 python -m venv fscore
 source fscore/bin/activate
-pip install --upgrade factscore (not needed anymore)
+pip install --upgrade factscore
 python -m spacy download en_core_web_sm
 python -m factscore.download_data
 pip install -r requirements.txt
@@ -53,4 +53,6 @@ Example
 python main.py --input_path /Users/anumafzal/PycharmProjects/FactSumm/results/3z2i7njs_MODEL_gpt-3.5-turbo-1106_DS_pubmed_TASK_summarization.jsonl --model_name GPT4-mini --grounding_provided True --openai_key api.key
 
 ```
+
+python main.py --input_path /home/ubuntu/juraj/results/gpt4omini.jsonl --model_name GPT4-mini --grounding_provided True --openai_key api.key
 
