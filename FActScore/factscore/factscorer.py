@@ -374,8 +374,7 @@ class FactScorer(object):
 
             if check_extrinsic:
                 decisions.append({"atom": atom, "is_supported": is_supported, "idx": idx, "wiki_context": context})
-            else:
-                decisions.append({"atom": atom, "is_supported": is_supported, "idx": idx})
+
 
         if cost_estimate:
             return total_words

@@ -4,7 +4,7 @@ import logging
 from typing import List, Optional
 import sys
 from FActScore.factscore.factscorer import FactScorer
-from utils.wandb_utils import wandb_init_run, wandb_push_json, wandb_push_table
+#from utils.wandb_utils import wandb_init_run, wandb_push_json, wandb_push_table
 from utils.fscore_utils import csv_to_jsonl_for_factscore
 from datetime import datetime
 import nltk
@@ -320,8 +320,8 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
 
-    csv_results_dir = "results/"
-    jsonl_paths = csv_to_jsonl_for_factscore(csv_results_dir)
+    #csv_results_dir = "result/"
+    #jsonl_paths = csv_to_jsonl_for_factscore(csv_results_dir)
 
 
     genFact = GenFact(args)
@@ -368,6 +368,7 @@ if __name__ == '__main__':
 
     deberta_nli.score_out = fs_extrinsic_out    
     deberta_extrinsic_out = deberta_nli.check_extrinsic()
+    pass
 
 
 

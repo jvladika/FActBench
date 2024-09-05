@@ -7,6 +7,7 @@ import numpy as np
 
 def get_openai_key():
     openai_tok = os.environ.get("OPENAI_API_KEY")
+    openai_tok = "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"
     assert openai_tok and openai_tok != "<openai_token>", "OpenAI token is not defined"
     return openai_tok.strip()
 def get_wiki_topic(query:list) -> List:
@@ -45,6 +46,7 @@ def get_wiki_topic(query:list) -> List:
 
 
     return wiki_topics
+
 def csv_to_jsonl_for_factscore(results_dir):
 
     # get a list of all logs
@@ -56,9 +58,9 @@ def csv_to_jsonl_for_factscore(results_dir):
         path_d = run.replace('.csv', '.jsonl')
         jsonl_paths.append(path_d)
 
-        df = pd.read_csv(run, encoding='ISO-8859-1')
+        df = pd.read_csv(run) #, encoding='ISO-8859-1')
         #df = df.head(2)
-        df = df.loc[[3,18]]
+        #df = df.loc[[3,18]]
 
         # add columns required by factscore
         df["topic"] = get_wiki_topic(df["prediction-summary"])
@@ -78,3 +80,6 @@ def csv_to_jsonl_for_factscore(results_dir):
 
     return jsonl_paths
 
+#test_path = "/home/ubuntu/juraj/results/csvs/test/"
+#json_paths = csv_to_jsonl_for_factscore(test_path)
+#print(json_paths)
