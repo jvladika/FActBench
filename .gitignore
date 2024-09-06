@@ -1,0 +1,5 @@
+.cache
+results
+api.key
+/FActScore/fscore/
+wandb/
