@@ -1,4 +1,4 @@
-from factscore.lm import LM
+from FActScore.factscore.lm import LM
 from openai import OpenAI, BadRequestError
 import sys
 import time
@@ -26,7 +26,7 @@ class OpenAIModel(LM):
         self.client = OpenAI(api_key=api_key.strip())
         self.model = self.model_name
 
-    def _generate(self, prompt, max_sequence_length=2048, max_output_length=128):
+    def _generate(self, prompt, max_sequence_length=16384, max_output_length=128):
         if self.add_n % self.save_interval == 0:
             self.save_cache()
         # return a tuple of string (generated text) and metadata (any format)
@@ -39,9 +39,9 @@ class OpenAIModel(LM):
             # Get the output from the response
             output = response.choices[0].message.content.strip()
             return output, response
-        elif self.model_name == "InstructGPT":
+        elif self.model_name == "gpt-4o-mini":
             # Call API
-            response = call_GPT3(prompt, self.client, temp=self.temp)
+            response = call_GPT4(prompt, self.client, temp=self.temp)
             # Get the output from the response
             output = response.choices[0].message.content
             return output, response
@@ -49,7 +49,7 @@ class OpenAIModel(LM):
             raise NotImplementedError()
 
 
-def call_ChatGPT(message, openai_client, model_name="gpt-3.5-turbo", max_len=1024, temp=0.7, verbose=False):
+def call_ChatGPT(message, openai_client, model_name="gpt-4o-mini", max_len=16384, temp=0.7, verbose=False):
     # call GPT-3 API until result is provided and then return it
     response = None
     received = False
@@ -58,7 +58,9 @@ def call_ChatGPT(message, openai_client, model_name="gpt-3.5-turbo", max_len=102
         try:
             response = openai_client.chat.completions.create(
                 model=model_name,
-                messages=message,
+                messages=[
+                    {"role": "user", "content": message},
+                ],
                 max_tokens=max_len,
                 temperature=temp)
             received = True
@@ -76,7 +78,7 @@ def call_ChatGPT(message, openai_client, model_name="gpt-3.5-turbo", max_len=102
     return response
 
 
-def call_GPT3(prompt, openai_client, model_name="gpt-3.5-turbo-0125", max_len=512, temp=0.7, num_log_probs=0):
+def call_GPT4(prompt, openai_client, model_name="gpt-4o-mini", max_len=16384, temp=0.7, num_log_probs=0):
     # call GPT-3 API until result is provided and then return it
     response = None
     received = False
@@ -84,7 +86,7 @@ def call_GPT3(prompt, openai_client, model_name="gpt-3.5-turbo-0125", max_len=51
     while not received:
         try:
             response = openai_client.chat.completions.create(
-                model=model_name,
+                model="gpt-4o-mini",
                 messages=[
                     {"role": "user", "content": prompt},
                 ],

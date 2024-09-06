@@ -1,3 +1,4 @@
+wandb
 torch
 sentence_transformers
 transformers
@@ -5,7 +6,7 @@ pysqlite3
 openai
 rank_bm25
 spacy
-
-# sentence_transformers>=2.2.2
-# transformers>=4.29.2
-# torch>=>=2.0.0
+python-dotenv
+nltk
+randomname
+pandas

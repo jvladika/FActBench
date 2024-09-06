@@ -2,8 +2,8 @@ import pandas as pd
 import tqdm
 import json
 import openai
-from factscore.openai_lm import call_ChatGPT
-from factscore.factscorer import FactScorer
+from FActScore.factscore.openai_lm import call_ChatGPT
+from FActScore.factscore.factscorer import FactScorer
 
 # File downloaded from https://github.com/shauryr/ACL-anthology-corpus
 # https://drive.google.com/file/d/1CFCzNGlTls0H-Zcaem4Hg_ETj4ebhcDO/view?usp=sharing

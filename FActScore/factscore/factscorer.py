@@ -4,14 +4,17 @@ import json
 import numpy as np
 import os
 import logging
-
+import sys
 from tqdm import tqdm
-from factscore.abstain_detection import is_response_abstained
-from factscore.atomic_facts import AtomicFactGenerator
-from factscore.clm import CLM
-from factscore.npm import NPM
-from factscore.openai_lm import OpenAIModel
-from factscore.retrieval import DocDB, Retrieval
+from FActScore.factscore.abstain_detection import is_response_abstained
+from FActScore.factscore.atomic_facts import AtomicFactGenerator
+from FActScore.factscore.clm import CLM
+from FActScore.factscore.npm import NPM
+from FActScore.factscore.openai_lm import OpenAIModel
+from FActScore.factscore.retrieval import DocDB, Retrieval
+from typing import List, Optional
+from utils.search_wiki import search_wiki
+from utils.fscore_utils import get_wiki_topic
 
 class FactScorer(object):
 
@@ -23,8 +26,10 @@ class FactScorer(object):
                  openai_key="api.key",
                  cost_estimate="consider_cache",
                  abstain_detection_type=None,
+                 grounding_provided=False,
                  batch_size=256):
-        assert model_name in ["retrieval+llama", "retrieval+llama+npm", "retrieval+ChatGPT", "npm", "retrieval+ChatGPT+npm"]
+        assert model_name in ["retrieval+llama", "retrieval+llama+npm", "retrieval+ChatGPT", "npm", "retrieval+ChatGPT+npm",
+                              "GPT4-mini"]
         self.model_name = model_name
 
         self.db = {}
@@ -33,11 +38,12 @@ class FactScorer(object):
         self.batch_size = batch_size # batch size for retrieval
         self.openai_key = openai_key
         self.abstain_detection_type = abstain_detection_type
+        self.grounding_provided = grounding_provided
 
         self.data_dir = data_dir
         self.cache_dir = cache_dir
         if not os.path.exists(cache_dir):
-            os.makedirs(cache_dir)
+            pass 
 
         self.af_generator = None
         self.cost_estimate = cost_estimate
@@ -46,9 +52,9 @@ class FactScorer(object):
             self.lm = CLM("inst-llama-7B",
                           model_dir=os.path.join(model_dir, "inst-llama-7B"),
                           cache_file=os.path.join(cache_dir, "inst-llama-7B.pkl"))
-        elif "ChatGPT" in model_name:
-            self.lm = OpenAIModel("ChatGPT",
-                                  cache_file=os.path.join(cache_dir, "ChatGPT.pkl"),
+        elif "GPT4" in model_name:
+            self.lm = OpenAIModel("gpt-4o-mini",
+                                  cache_file=os.path.join(cache_dir, "GPT4o-mini.pkl"),
                                   key_path=openai_key)
         else:
             self.lm = None
@@ -91,6 +97,7 @@ class FactScorer(object):
         # https://openai.com/pricing
         # if we use davinci-003, the cost is $0.02 per 1000 tokens
         # if we use gpt-3.5-turbo, the cost is $0.002 per 1000 tokens
+        # @todo: Anum update this
         if model == "davinci-003":
             rate = 0.02
         elif model == "gpt-3.5-turbo":
@@ -104,10 +111,12 @@ class FactScorer(object):
     def get_score(self,
                   topics,
                   generations,
+                  groundings,
                   gamma=10,
                   atomic_facts=None,
                   knowledge_source=None,
-                  verbose=False):
+                  verbose=False,
+                  grounding_provided=False):
         if knowledge_source is None:
             # use the default knowledge source
             knowledge_source = "enwiki-20230401"
@@ -128,14 +137,14 @@ class FactScorer(object):
             if self.af_generator is None:
                 self.af_generator = AtomicFactGenerator(key_path=self.openai_key,
                                                         demon_dir=os.path.join(self.data_dir, "demos"),
-                                                        gpt3_cache_file=os.path.join(self.cache_dir, "InstructGPT.pkl"))
+                                                        gpt3_cache_file=os.path.join(self.cache_dir, "GPT4o-mini.pkl"))
 
             # estimate the total cost of atomic fact generation
             total_words = 0
             for gen in generations:
                 total_words += self.af_generator.run(gen, cost_estimate=self.cost_estimate)
 
-            self.print_cost_estimates(total_words, task="atomic fact generation", model="davinci-003")
+            #self.print_cost_estimates(total_words, task="atomic fact generation", model="GPT-4o mini")
 
             if verbose:
                 topics = tqdm(topics)
@@ -162,14 +171,15 @@ class FactScorer(object):
 
         respond_ratio = np.mean([facts is not None for facts in atomic_facts])
 
+        # todo: update this
         if "ChatGPT" in self.model_name:
             # estimate the total cost of response generation
             total_words = 0
-            for topic, generation, facts in zip(topics, generations, atomic_facts):
+            for topic, generation, facts, grounding in zip(topics, generations, atomic_facts, groundings):
                 if facts is not None:
-                    total_words += self._get_score(topic, generation, facts, knowledge_source, cost_estimate=self.cost_estimate)
+                    total_words += self._get_score(topic, generation, facts, knowledge_source, cost_estimate=self.cost_estimate, grounding=grounding, grounding_provided=grounding_provided)
 
-            self.print_cost_estimates(total_words, task="factscore evaluation", model="gpt-3.5-turbo")
+            #self.print_cost_estimates(total_words, task="factscore evaluation", model="gpt-3.5-turbo")
 
         if verbose:
             topics = tqdm(topics)
@@ -177,13 +187,16 @@ class FactScorer(object):
         scores = []
         init_scores = []
         decisions = []
-        for topic, generation, facts in zip(topics, generations, atomic_facts):
+        wrong_facts = []
+        for topic, generation, facts, grounding in zip(topics, generations, atomic_facts, groundings):
+            print (f"Running for the follow facts. {facts}")
             if facts is None:
                 decisions.append(None)
             else:
-                decision = self._get_score(topic, generation, facts, knowledge_source)
+                decision = self._get_score(topic, generation, facts, knowledge_source, grounding=grounding, grounding_provided=grounding_provided)
                 score = np.mean([d["is_supported"] for d in decision])
-                
+                wrong_fact = [{"atom":d["atom"], "idx":idx}  for idx, d in enumerate(decision) if not d["is_supported"]]
+
                 if gamma:
                     init_scores.append(score)
                     penalty = 1.0 if len(facts)>gamma else np.exp(1-gamma/len(facts))
@@ -191,6 +204,7 @@ class FactScorer(object):
                 
                 decisions.append(decision)
                 scores.append(score)
+                wrong_facts.append(wrong_fact)
                 if len(scores) % 10 == 0:
                     self.save_cache()
 
@@ -199,6 +213,7 @@ class FactScorer(object):
         out = {"score": np.mean(scores),
                "respond_ratio": respond_ratio,
                "decisions": decisions,
+               "wrong_facts": wrong_facts,
                "num_facts_per_response": np.mean([len(d) for d in decisions if d is not None])}
 
         if gamma:
@@ -206,21 +221,148 @@ class FactScorer(object):
         
         return out
 
-    def _get_score(self, topic, generation, atomic_facts, knowledge_source, cost_estimate=None):
+    def get_extrinsic_af(self, topics, wrong_facts, groundings, generations = None,  verbose=False, grounding_provided=False):
+        if verbose:
+            topics = tqdm(topics)
+
+        scores = []
+        decisions = []
+        extrinsic_facts = []
+
+        for topic, generation, facts, grounding in zip(topics, generations, wrong_facts, groundings):
+            print(f"Running for the follow wrongly classified facts to check if they are intrinsic or extrinsic. {facts}")
+            if facts is None:
+                decisions.append(None)
+            else:
+                decision = self._get_score(topic, generation, facts, knowledge_source=None, grounding=grounding,
+                                           grounding_provided=grounding_provided, check_extrinsic=True)
+                score = np.mean([d["is_supported"] for d in decision])
+                extrinsic_fact = [{"atom":d["atom"], "idx":d["idx"]}  for idx, d in enumerate(decision) if not d["is_supported"]]
+
+
+                decisions.append(decision)
+                scores.append(score)
+                extrinsic_facts.append(extrinsic_fact)
+                if len(scores) % 10 == 0:
+                    self.save_cache()
+
+        self.save_cache()
+
+        extrinsic_af = {"score": np.mean(scores),
+               "decisions": decisions,
+               "extrinsic_facts": extrinsic_facts,
+               }
+        print ("The following wrongly classified facts are Extrinsic: \n {}".format(extrinsic_facts))
+
+        return extrinsic_af
+
+    def get_extrinsic_score(self, topics, extrinsic_facts, generations = None,  verbose=False, grounding_provided=False):
+        if verbose:
+            topics = tqdm(topics)
+
+        knowledge_source = "enwiki-20230401"
+
+        if knowledge_source not in self.retrieval:
+            self.register_knowledge_source(knowledge_source)
+        scores = []
+        decisions = []
+        extrinsic_hallucinated_facts = []
+
+
+        for topic, generation, facts in zip(topics, generations, extrinsic_facts):
+            print(f"Checking the wrongly classified text through extrinsic fact checking using knowledge source {knowledge_source} for the following facts. \n {facts}")
+            if facts is None:
+                decisions.append(None)
+            else:
+
+                decision = self._get_score(topic, generation, facts, knowledge_source=knowledge_source,
+                                           grounding_provided=grounding_provided, check_extrinsic=False, get_topic_per_af = True)
+                score = np.mean([d["is_supported"] for d in decision])
+                extrinsic_hallucinated_fact = [{"atom":d["atom"], "idx":d["idx"]}  for idx, d in enumerate(decision) if not d["is_supported"]]
+
+
+                decisions.append(decision)
+                scores.append(score)
+                extrinsic_hallucinated_facts.append(extrinsic_hallucinated_fact)
+                if len(scores) % 10 == 0:
+                    self.save_cache()
+
+        self.save_cache()
+
+        self.extrinsic_out = {"score": np.mean(scores),
+               #"respond_ratio": respond_ratio,
+               "decisions": decisions,
+               "wrong_facts": extrinsic_hallucinated_facts,
+               "num_facts_per_response": np.mean([len(d) for d in decisions if d is not None])}
+
+        print ("The following facts are still classified as hallucinations after Extrinsic Fact Checking: \n {}".format(extrinsic_facts))
+        return self.extrinsic_out
+
+
+    def search_passage_till_success(self, topic, atom, generation, knowledge_source) -> List:
+        try:
+            passages = self.retrieval[knowledge_source].get_passages(topic, atom, k=5)
+        except:
+            # try all suggested topics until a match is found
+            topics = search_wiki(generation)
+            if not topic:
+                # if we are in the get topic per AF mode. The LLM generated topic would be tested first.
+                llm_generate_topic = get_wiki_topic([atom])[0]
+                topics.insert(0,llm_generate_topic)
+
+            success = False
+            idx = 0
+            while (success == False):
+                try:
+                    assert idx < len(topics), f"Exhausted all options, no DB topic match found!"
+                    topic = topics[idx]
+                    passages = self.retrieval[knowledge_source].get_passages(topic, atom, k=5)
+                    success = True
+                except:
+                    idx += 1
+        return passages
+
+    def _get_score(self, topic, generation, atomic_facts, knowledge_source, grounding = None, grounding_provided=False,
+                   cost_estimate=None, check_extrinsic = False, get_topic_per_af = False):
         decisions = []
         total_words = 0
-        for atom in atomic_facts:
+        for atomic_fact in atomic_facts:
+            if not isinstance(atomic_fact, str):
+                atom = atomic_fact["atom"]
+                idx = atomic_fact["idx"]
+            else:
+                atom = atomic_fact
+                idx = None
             atom = atom.strip()
             if self.lm:
-                passages = self.retrieval[knowledge_source].get_passages(topic, atom, k=5)
-                definition = "Answer the question about {} based on the given context.\n\n".format(topic)
+                if grounding_provided:
+                    if isinstance(grounding, str):
+                        grounding = [grounding]
+                    passages = [{'title': 'Article', 'text': ground} for ground in grounding]
+                elif get_topic_per_af:
+                    # passing empty topic would force the retriever the get a llm generated topic
+                    passages = self.search_passage_till_success(topic = '', atom = atom, generation=atom,
+                                                       knowledge_source=knowledge_source)
+                else:
+                    passages = self.search_passage_till_success(topic, atom, generation, knowledge_source)
+
+                if check_extrinsic:
+                    definition = "Does the provided text contain any information related to the Input statement?.\n\n"
+                else:
+                    definition = "Answer the question about {} based on the given context.\n\n".format(topic)
+
                 context = ""
                 for psg_idx, psg in enumerate(reversed(passages)):
                     context += "Title: {}\nText: {}\n\n".format(psg["title"], psg["text"].replace("<s>", "").replace("</s>", ""))
                 definition += context.strip()
                 if not definition[-1] in string.punctuation:
                     definition += "."
-                prompt = "{}\n\nInput: {} True or False?\nOutput:".format(definition.strip(), atom.strip())
+
+                if check_extrinsic:
+                    definition.replace("Title: Article", "")
+                    prompt = "{}\n\nInput: {} \n This statement is discussed in the above provided text. True or False?\nOutput:".format(definition.strip(), atom.strip())
+                else:
+                    prompt = "{}\n\nInput: {} True or False?\nOutput:".format(definition.strip(), atom.strip())
 
                 if cost_estimate:
                     if cost_estimate == "consider_cache" and (prompt.strip() + "_0") not in self.lm.cache_dict:
@@ -258,7 +400,8 @@ class FactScorer(object):
                 npprob = self.npm[knowledge_source].get_probabilty(topic, atom)
                 is_supported = npprob > 0.3
 
-            decisions.append({"atom": atom, "is_supported": is_supported})
+            decisions.append({"atom": atom, "is_supported": is_supported, "idx": idx, "wiki_context": context})
+
 
         if cost_estimate:
             return total_words
@@ -315,6 +458,9 @@ if __name__ == '__main__':
     parser.add_argument('--n_samples',
                         type=int,
                         default=None)
+    parser.add_argument('--grounding_provided',
+                        type=bool,
+                        default=False)
 
     args = parser.parse_args()
 

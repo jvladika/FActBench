@@ -16,8 +16,8 @@ from collections import defaultdict
 from transformers import AutoModelForCausalLM
 from transformers import LlamaTokenizer
 
-from factscore.utils import convert_model_to_int8_on_gpu
-from factscore.lm import LM
+from FActScore.factscore.utils import convert_model_to_int8_on_gpu
+from FActScore.factscore.lm import LM
 
 class CLM(LM):
     def __init__(self, model_name, model_dir, cache_file=None):

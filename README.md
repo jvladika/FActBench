@@ -20,7 +20,7 @@ pip install gdown
 gdown 1mekls6OGOKLmt7gYtHs0WGf5oTamTNat
 ```
 
-Test run
+Test run for Factscore
 ```
 cd FActScore
 echo "your_openai_key" > api.key
@@ -28,4 +28,31 @@ python -m factscore.factscorer --input_path data/unlabeled/ChatGPT_first20.jsonl
 ```
 see more options at https://github.com/shmsw25/FActScore
 
+
+Test run for Adapted version of factscore
+
+Update the paths inside the parse_options() of factscorer.py with absolute path of your working directory
+```   
+ parser.add_argument('--data_dir',
+                        type=str,
+                        default="/Users/anumafzal/PycharmProjects/FactSumm/FActScore/.cache/factscore/")
+    parser.add_argument('--model_dir',
+                        type=str,
+                        default="/Users/anumafzal/PycharmProjects/FactSumm/FActScore/.cache/factscore/")
+    parser.add_argument('--cache_dir',
+                        type=str,
+                        default="/Users/anumafzal/PycharmProjects/FactSumm/FActScore/.cache/factscore/")
+```
+```
+python main.py --input_path {path_to_jsonl} --model_name retrieval+ChatGPT --grounding_provided True --openai_key api.key
+
+```
+
+Example 
+```
+python main.py --input_path /Users/anumafzal/PycharmProjects/FactSumm/results/3z2i7njs_MODEL_gpt-3.5-turbo-1106_DS_pubmed_TASK_summarization.jsonl --model_name GPT4-mini --grounding_provided True --openai_key api.key
+
+```
+
+python main.py --input_path /home/ubuntu/juraj/results/gpt4omini.jsonl --model_name GPT4-mini --grounding_provided True --openai_key api.key
 

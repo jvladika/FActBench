@@ -102,6 +102,7 @@ class DocDB(object):
         results = cursor.fetchall()
         results = [r for r in results]
         cursor.close()
+
         assert results is not None and len(results)==1, f"`topic` in your data ({title}) is likely to be not a valid title in the DB."
         results = [{"title": title, "text": para} for para in results[0][0].split(SPECIAL_SEPARATOR)]
         assert len(results)>0, f"`topic` in your data ({title}) is likely to be not a valid title in the DB."
@@ -126,7 +127,7 @@ class Retrieval(object):
     def load_encoder(self):
         from sentence_transformers import SentenceTransformer
         encoder = SentenceTransformer("sentence-transformers/" + self.retrieval_type)
-        encoder = encoder.cuda()
+        encoder = encoder#.cuda()
         encoder = encoder.eval()
         self.encoder = encoder
         assert self.batch_size is not None
