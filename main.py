@@ -4,7 +4,7 @@ import logging
 from typing import List, Optional
 import sys
 from FActScore.factscore.factscorer import FactScorer
-#from utils.wandb_utils import wandb_init_run, wandb_push_json, wandb_push_table
+from utils.wandb_utils import wandb_init_run, wandb_push_json, wandb_push_table
 from utils.fscore_utils import csv_to_jsonl_for_factscore
 from datetime import datetime
 import nltk
@@ -142,11 +142,12 @@ class GenFact:
 
 
 class DebertaNli:
-    def __init__(self, score_out, decisions, groundings):
+    def __init__(self, score_out, decisions, groundings, fs):
 
         self.score_out = score_out
         self.decisions = decisions
         self.groundings = groundings
+        self.fs = fs
 
         self.model_name = "tasksource/deberta-base-long-nli"
         self.tokenizer = AutoTokenizer.from_pretrained(self.model_name)
@@ -188,21 +189,41 @@ class DebertaNli:
             nli_decisions.append(nli_results)
         
         new_decisions = list()
+        wrong_facts = list()
+
         for decision, nli_prediction in zip(self.decisions, nli_decisions):
             new_list = list()
             for dec, pred in zip(decision, nli_prediction):
                 dec["nli_intrinsic"] = pred
                 dec["nli_supported_intrinsic"] = True if pred == "entailment" else False
                 new_list.append(dec)
+                
 
             debscore = np.mean([d["nli_supported_intrinsic"] for d in decision])
             deberta_scores.append(debscore)
             new_decisions.append(new_list)
-        
+
+            wfs = [{"atom":d["atom"], "idx":idx}  for idx, d in enumerate(new_list) if not d["nli_supported_intrinsic"]]
+            wrong_facts.append(wfs)
+
+            for d in new_list:
+                if not d["nli_supported_intrinsic"]:                         
+                    passages = self.fs.search_passage_till_success(topic = '', atom = d["atom"], generation=d["atom"],
+                                                               knowledge_source="enwiki-20230401")
+                    context = ""
+                    for psg_idx, psg in enumerate(reversed(passages)):
+                        context += "Title: {}\nText: {}\n\n".format(psg["title"], psg["text"].replace("<s>", "").replace("</s>", ""))
+                    context = context.strip()
+
+                    d["wiki_context"] = context
+
+            
         self.decisions = new_decisions            
         self.score_out["decisions"] = new_decisions
 
         self.score_out["deberta_score_intrinsic"] = np.mean(deberta_scores)
+        self.score_out["deberta_wrong_facts"] = wrong_facts
+
         logging.critical("Deberta Score (intrinsic) = %.1f%%" % (100 * np.mean(deberta_scores)))
 
         return self.score_out, np.mean(deberta_scores)
@@ -390,7 +411,7 @@ if __name__ == '__main__':
 
 
     genFact = GenFact(args)
-    #wandb_init_run(run_path=args.input_path, config = genFact.args)
+    wandb_init_run(run_path=args.input_path, config = genFact.args)
 
 
     print ("Running Vanilla FactScore")
@@ -414,27 +435,28 @@ if __name__ == '__main__':
     updated_score, updated_wrong_facts = genFact.get_updated_score(factscore_out,fs_extrinsic_out)
 
     #WANDB part was giving me errors so I temporarily commented it out.
-    ''' 
+    
     wandb_table = {"fs_wiki": factscore_out_vanilla["score"], "fs_grounded": factscore_out["score"],
                    "fs_grounded_wiki": updated_score}
     wandb_push_json(wandb_table)
 
     wandb_table = {"generations": factscore_out["generations"], "hallucinations": updated_wrong_facts }
     wandb_push_table(wandb_table)
-    '''
+    
 
     #Creates new class for deberta predictions. Loads a model from HuggingFace.
     deberta_nli = DebertaNli(score_out = factscore_out,
                              decisions =  factscore_out["decisions"],
-                              groundings = factscore_out["groundings"])
+                              groundings = factscore_out["groundings"],
+                              fs = genFact.fs)
     
     #Output is the same as factscore_out, but with a new attribute in dictionaries with NLI predictions. 
     #Gives intrinsic NLI score.
-    deberta_out = deberta_nli.check_intrinsic()
+    deberta_out, deberta_intrinsic_score = deberta_nli.check_intrinsic()
 
     #Checks the wrong facts with extrinsic checking over Wikipedia. Gives final NLI score.
-    deberta_nli.score_out = fs_extrinsic_out    
-    deberta_extrinsic_out, deberta_final_score = deberta_nli.check_extrinsic(factscore_out["wrong_facts"])
+    deberta_nli.score_out = deberta_out    
+    deberta_extrinsic_out, deberta_final_score = deberta_nli.check_extrinsic(factscore_out["deberta_wrong_facts"])
     
     #Calculates the final pooled prediction (inside of pooled_decisions) and final pooled score.
     pooled_decisions, pooled_score = get_pooled_score(deberta_extrinsic_out)
