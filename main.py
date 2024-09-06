@@ -172,7 +172,8 @@ class DebertaNli:
 
     def check_intrinsic(self,) -> dict:
         nli_decisions = list()
-
+        deberta_scores = list()
+        
         for data_instance, article in zip(self.decisions, self.groundings):
             nli_results = list()
 
@@ -191,22 +192,38 @@ class DebertaNli:
             new_list = list()
             for dec, pred in zip(decision, nli_prediction):
                 dec["nli_intrinsic"] = pred
+                dec["nli_supported_intrinsic"] = True if pred == "entailment" else False
                 new_list.append(dec)
 
+            debscore = np.mean([d["nli_supported_intrinsic"] for d in decision])
+            deberta_scores.append(debscore)
             new_decisions.append(new_list)
         
         self.decisions = new_decisions            
         self.score_out["decisions"] = new_decisions
-        return self.score_out
+
+        self.score_out["deberta_score_intrinsic"] = np.mean(deberta_scores)
+        logging.critical("Deberta Score (intrinsic) = %.1f%%" % (100 * np.mean(deberta_scores)))
+
+        return self.score_out, np.mean(deberta_scores)
     
 
-    def check_extrinsic(self,) -> dict:
+    def check_extrinsic(self, wrong_facts) -> dict:
         nli_decisions = list()
+        deberta_scores = list()
 
-        for data_instance in self.decisions:
+        for data_instance, wf in zip(self.decisions, wrong_facts):
             nli_results = list()
 
+            fact_idx = 0
+            wf_indices = [w["idx"] for w in wf]
+
             for atom_instance in data_instance:
+                if fact_idx not in wf_indices:
+                    nli_results.append(("none", fact_idx))
+                    fact_idx += 1
+                    continue
+
                 atom_fact = atom_instance["atom"]
                 atom_wiki_context = atom_instance["wiki_context"]
 
@@ -225,22 +242,70 @@ class DebertaNli:
                     nli_class = "neutral"
                 elif max_index == 2:
                     nli_class = "contradiction"
-                nli_results.append(nli_class)
+                nli_results.append((nli_class, fact_idx))
+
+                fact_idx += 1
 
             nli_decisions.append(nli_results)
+
         new_decisions = list()
         for decision, nli_prediction in zip(self.decisions, nli_decisions):
             new_list = list()
+
+            atom_dec_idx = 0
+            wrong_fact_indices = [n[1] for n in nli_prediction if n[0] != "none"]
             for dec, pred in zip(decision, nli_prediction):
-                dec["nli_extrinsic"] = pred
-                new_list.append(dec)
+
+                if atom_dec_idx in wrong_fact_indices:
+                    dec["nli_extrinsic"] = pred[0]
+                    dec["nli_supported_extrinsic"] = True if pred[0] == "entailment" else False
+                    dec["nli_final_supported"] = dec["nli_supported_extrinsic"]
+                    new_list.append(dec)
+                else:
+                    dec["nli_final_supported"] = dec["nli_supported_intrinsic"]
+                    new_list.append(dec)
+
+                atom_dec_idx += 1
+
+            #debscore = np.mean([d["nli_supported_extrinsic"] for d in decision])
+            #deberta_scores.append(debscore)
+            debscore = np.mean([d["nli_final_supported"] for d in new_list])
+            deberta_scores.append(debscore)
 
             new_decisions.append(new_list)
 
         self.decisions = new_decisions            
         self.score_out["decisions"] = new_decisions
+        self.score_out["deberta_score_final"] = np.mean(deberta_scores)
+        logging.critical("Deberta score (final, after extrinsic) = %.1f%%" % (100 * np.mean(deberta_scores)))        
 
-        return self.score_out
+        return self.score_out, np.mean(deberta_scores)
+
+def get_pooled_score(deberta_extrinsic_out):
+    decisions = deberta_extrinsic_out["decisions"]
+    new_decisions = list()
+    pooled_scores = list()
+
+    for instance_decisions in decisions:
+        new_list = list()
+    
+        for dec in instance_decisions:
+            deberta_final = dec["nli_final_supported"]
+            factscore_final = dec["is_supported"]
+
+            #Pooled decision is True if both FactScore and NLI predictions are True.
+            pooled_final = deberta_final and factscore_final
+            dec["pooled_supported"] = pooled_final
+            new_list.append(dec)
+
+        poolscore = np.mean([d["pooled_supported"] for d in new_list])
+        pooled_scores.append(poolscore)
+
+        new_decisions.append(new_list)
+
+    logging.critical("Pooled score (final) = %.1f%%" % (100 * np.mean(pooled_scores)))        
+
+    return new_decisions, np.mean(pooled_scores)
 
 
 def parse_options(args: List[str]) -> argparse.Namespace:
@@ -364,18 +429,14 @@ if __name__ == '__main__':
                               groundings = factscore_out["groundings"])
     
     #Output is the same as factscore_out, but with a new attribute in dictionaries with NLI predictions. 
+    #Gives intrinsic NLI score.
     deberta_out = deberta_nli.check_intrinsic()
 
+    #Checks the wrong facts with extrinsic checking over Wikipedia. Gives final NLI score.
     deberta_nli.score_out = fs_extrinsic_out    
-    deberta_extrinsic_out = deberta_nli.check_extrinsic()
-    pass
+    deberta_extrinsic_out, deberta_final_score = deberta_nli.check_extrinsic(factscore_out["wrong_facts"])
+    
+    #Calculates the final pooled prediction (inside of pooled_decisions) and final pooled score.
+    pooled_decisions, pooled_score = get_pooled_score(deberta_extrinsic_out)
 
-
-
-
-
-
-
-        
-
-
+    print("done")
