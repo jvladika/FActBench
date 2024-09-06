@@ -3,15 +3,16 @@ import os
 import wandb
 import json
 
+'''
 def wandb_setup():
     pass
 
 def wandb_init_run(run_path:str, config = None, wandb_project_name = "GenFact", entity = "anumafzal"):
     pass
+'''
 
 
 
-""" 
 def wandb_setup():
 
     wandb_token_key: str = "WANDB_TOKEN"
@@ -54,7 +55,3 @@ def wandb_init_run(run_path:str, config = None, wandb_project_name = "factgen", 
 
     wandb.init(project=wandb_project_name, entity=entity, config=vars(config), name=wandb_run_name,
                mode=wandb_mode, group=task)
-
-
-
-"""

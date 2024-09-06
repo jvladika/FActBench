@@ -1,5 +1,9 @@
 .cache
-results
+results/archived
+results/genfact
+results/test
 api.key
 /FActScore/fscore/
 wandb/
+.idea/
+.ipynb_checkpoints/
