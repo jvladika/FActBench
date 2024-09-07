@@ -17,8 +17,7 @@ import os
 import numpy as np
 from transformers import AutoTokenizer, AutoModelForSequenceClassification
 import torch
-#device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
-device = torch.device("cuda") if torch.cuda.is_available() else torch.device("mps")
+device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
 
 
 
@@ -40,7 +39,6 @@ class GenFact:
                         cost_estimate=self.args.cost_estimate,
                         abstain_detection_type=self.args.abstain_detection_type,
                         grounding_provided=self.args.grounding_provided)
-
 
     def run_factscrorer(self, grounding_provided:bool) -> dict:
 
@@ -144,11 +142,12 @@ class GenFact:
 
 
 class DebertaNli:
-    def __init__(self, score_out, decisions, groundings):
+    def __init__(self, score_out, decisions, groundings, fs):
 
         self.score_out = score_out
         self.decisions = decisions
         self.groundings = groundings
+        self.fs = fs
 
         self.model_name = "tasksource/deberta-base-long-nli"
         self.tokenizer = AutoTokenizer.from_pretrained(self.model_name)
@@ -190,6 +189,8 @@ class DebertaNli:
             nli_decisions.append(nli_results)
         
         new_decisions = list()
+        wrong_facts = list()
+
         for decision, nli_prediction in zip(self.decisions, nli_decisions):
             new_list = list()
             for dec, pred in zip(decision, nli_prediction):
@@ -197,14 +198,32 @@ class DebertaNli:
                 dec["nli_supported_intrinsic"] = True if pred == "entailment" else False
                 new_list.append(dec)
 
+
             debscore = np.mean([d["nli_supported_intrinsic"] for d in decision])
             deberta_scores.append(debscore)
             new_decisions.append(new_list)
-        
+
+            wfs = [{"atom":d["atom"], "idx":idx}  for idx, d in enumerate(new_list) if not d["nli_supported_intrinsic"]]
+            wrong_facts.append(wfs)
+
+            for d in new_list:
+                if not d["nli_supported_intrinsic"]:
+                    passages = self.fs.search_passage_till_success(topic = '', atom = d["atom"], generation=d["atom"],
+                                                               knowledge_source="enwiki-20230401")
+                    context = ""
+                    for psg_idx, psg in enumerate(reversed(passages)):
+                        context += "Title: {}\nText: {}\n\n".format(psg["title"], psg["text"].replace("<s>", "").replace("</s>", ""))
+                    context = context.strip()
+
+                    d["wiki_context"] = context
+
+
         self.decisions = new_decisions            
         self.score_out["decisions"] = new_decisions
 
         self.score_out["deberta_score_intrinsic"] = np.mean(deberta_scores)
+        self.score_out["deberta_wrong_facts"] = wrong_facts
+
         logging.critical("Deberta Score (intrinsic) = %.1f%%" % (100 * np.mean(deberta_scores)))
 
         return self.score_out, np.mean(deberta_scores)
@@ -387,7 +406,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
 
-    csv_results_dir = "results/test/"
+    csv_results_dir = "results/"
     jsonl_paths = csv_to_jsonl_for_factscore(csv_results_dir)
 
 
@@ -422,11 +441,12 @@ if __name__ == '__main__':
     #Creates new class for deberta predictions. Loads a model from HuggingFace.
     deberta_nli = DebertaNli(score_out = factscore_out,
                              decisions =  factscore_out["decisions"],
-                              groundings = factscore_out["groundings"])
+                              groundings = factscore_out["groundings"],
+                              fs = genFact.fs)
     
     #Output is the same as factscore_out, but with a new attribute in dictionaries with NLI predictions. 
     #Gives intrinsic NLI score.
-    deberta_out = deberta_nli.check_intrinsic()
+    deberta_out, deberta_intrinsic_score = deberta_nli.check_intrinsic()
     genFact.write_logs(deberta_out, fname="deberta_grounded.json")
 
     wandb_table = {"fs_wiki": factscore_out_vanilla["score"], "fs_grounded": factscore_out["score"], "deberta_grounded": factscore_out["deberta_score_intrinsic"],
@@ -436,7 +456,7 @@ if __name__ == '__main__':
     deberta_nli.score_out = fs_extrinsic_out    
     deberta_extrinsic_out, deberta_final_score = deberta_nli.check_extrinsic(factscore_out["wrong_facts"])
     genFact.write_logs(deberta_extrinsic_out, fname="deberta_grounded_extrinsic.json")
-    
+
     #Calculates the final pooled prediction (inside of pooled_decisions) and final pooled score.
     pooled_decisions, pooled_score = get_pooled_score(deberta_extrinsic_out)
 
