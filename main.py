@@ -4,8 +4,8 @@ import logging
 from typing import List, Optional
 import sys
 from FActScore.factscore.factscorer import FactScorer
-#from utils.wandb_utils import wandb_init_run, wandb_push_json, wandb_push_table
-from utils.fscore_utils import csv_to_jsonl_for_factscore
+from utils.wandb_utils import wandb_init_run, wandb_push_json, wandb_push_table
+from utils.fscore_utils import csv_to_jsonl_for_factscore, regenerate_text, flatten_hallucinations
 from datetime import datetime
 import nltk
 import numpy as np
@@ -13,11 +13,12 @@ import os
 nltk.download('punkt_tab')
 from dotenv import load_dotenv
 load_dotenv()
-
+import os
 import numpy as np
 from transformers import AutoTokenizer, AutoModelForSequenceClassification
 import torch
-device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
+#device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
+device = torch.device("cuda") if torch.cuda.is_available() else torch.device("mps")
 
 
 
@@ -39,6 +40,7 @@ class GenFact:
                         cost_estimate=self.args.cost_estimate,
                         abstain_detection_type=self.args.abstain_detection_type,
                         grounding_provided=self.args.grounding_provided)
+
 
     def run_factscrorer(self, grounding_provided:bool) -> dict:
 
@@ -385,19 +387,17 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
 
-    #csv_results_dir = "result/"
-    #jsonl_paths = csv_to_jsonl_for_factscore(csv_results_dir)
+    csv_results_dir = "results/test/"
+    jsonl_paths = csv_to_jsonl_for_factscore(csv_results_dir)
 
 
     genFact = GenFact(args)
-    #wandb_init_run(run_path=args.input_path, config = genFact.args)
+    wandb_init_run(run_path=args.input_path, config = genFact.args)
 
 
     print ("Running Vanilla FactScore")
     factscore_out_vanilla = genFact.run_factscrorer(grounding_provided = False )
     genFact.write_logs(factscore_out_vanilla, fname="factscore_vanilla.json")
-
-
 
     print ("Running Factscore with grounded document")
     factscore_out = genFact.run_factscrorer(grounding_provided=args.grounding_provided)
@@ -411,17 +411,13 @@ if __name__ == '__main__':
     genFact.write_logs(factscore_out, fname="factscore_grounded_extrinsic.json")
 
 
-    updated_score, updated_wrong_facts = genFact.get_updated_score(factscore_out,fs_extrinsic_out)
+    fs_updated_score, fs_updated_wrong_facts = genFact.get_updated_score(factscore_out,fs_extrinsic_out)
+
+    # test regeneration
+    regenerations = regenerate_text(factscore_out["generations"], flatten_hallucinations(fs_updated_wrong_facts))
 
     #WANDB part was giving me errors so I temporarily commented it out.
-    ''' 
-    wandb_table = {"fs_wiki": factscore_out_vanilla["score"], "fs_grounded": factscore_out["score"],
-                   "fs_grounded_wiki": updated_score}
-    wandb_push_json(wandb_table)
 
-    wandb_table = {"generations": factscore_out["generations"], "hallucinations": updated_wrong_facts }
-    wandb_push_table(wandb_table)
-    '''
 
     #Creates new class for deberta predictions. Loads a model from HuggingFace.
     deberta_nli = DebertaNli(score_out = factscore_out,
@@ -431,12 +427,25 @@ if __name__ == '__main__':
     #Output is the same as factscore_out, but with a new attribute in dictionaries with NLI predictions. 
     #Gives intrinsic NLI score.
     deberta_out = deberta_nli.check_intrinsic()
+    genFact.write_logs(deberta_out, fname="deberta_grounded.json")
 
+    wandb_table = {"fs_wiki": factscore_out_vanilla["score"], "fs_grounded": factscore_out["score"], "deberta_grounded": factscore_out["deberta_score_intrinsic"],
+                   "fs_grounded_wiki": fs_updated_score}
+    wandb_push_json(wandb_table)
     #Checks the wrong facts with extrinsic checking over Wikipedia. Gives final NLI score.
     deberta_nli.score_out = fs_extrinsic_out    
     deberta_extrinsic_out, deberta_final_score = deberta_nli.check_extrinsic(factscore_out["wrong_facts"])
+    genFact.write_logs(deberta_extrinsic_out, fname="deberta_grounded_extrinsic.json")
     
     #Calculates the final pooled prediction (inside of pooled_decisions) and final pooled score.
     pooled_decisions, pooled_score = get_pooled_score(deberta_extrinsic_out)
+
+    wandb_table = {"fs_wiki": factscore_out_vanilla["score"], "fs_grounded": factscore_out["score"],
+                   "deberta_grounded": factscore_out["deberta_score_intrinsic"],
+                   "fs_grounded_wiki": fs_updated_score, "deberta_grounded_wiki": deberta_final_score,"pooled_score":pooled_score}
+    wandb_push_json(wandb_table)
+
+    wandb_table = {"generations": factscore_out["generations"], "fs_hallucinations": fs_updated_wrong_facts, "regenerations": regenerations}
+    wandb_push_table(wandb_table)
 
     print("done")
