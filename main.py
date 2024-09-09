@@ -19,7 +19,7 @@ from transformers import AutoTokenizer, AutoModelForSequenceClassification
 import torch
 device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
 
-
+fs_logs_available = {}
 
 class GenFact:
     def __init__(self, args: Optional[List[str]] = None):
@@ -407,10 +407,11 @@ if __name__ == '__main__':
 
 
     csv_results_dir = "results/"
-    jsonl_paths = csv_to_jsonl_for_factscore(csv_results_dir)
+    #jsonl_paths = csv_to_jsonl_for_factscore(csv_results_dir)
 
 
     genFact = GenFact(args)
+
     wandb_init_run(run_path=args.input_path, config = genFact.args)
 
 
@@ -431,13 +432,18 @@ if __name__ == '__main__':
 
 
     fs_updated_score, fs_updated_wrong_facts = genFact.get_updated_score(factscore_out,fs_extrinsic_out)
+    wandb_table = {"fs_wiki": factscore_out_vanilla["score"], "fs_grounded": factscore_out["score"],
+                   "fs_grounded_wiki": fs_updated_score}
+    wandb_push_json(wandb_table)
 
     # test regeneration
-    regenerations = regenerate_text(factscore_out["generations"], flatten_hallucinations(fs_updated_wrong_facts))
+    fs_regenerations = regenerate_text(factscore_out["generations"], flatten_hallucinations(fs_updated_wrong_facts))
 
-    #WANDB part was giving me errors so I temporarily commented it out.
+    wandb_table = {"generations": factscore_out["generations"], "fs_hallucinations": fs_updated_wrong_facts,
+                   "fs_regenerations": fs_regenerations}
+    wandb_push_table(wandb_table)
 
-
+    '''
     #Creates new class for deberta predictions. Loads a model from HuggingFace.
     deberta_nli = DebertaNli(score_out = factscore_out,
                              decisions =  factscore_out["decisions"],
@@ -449,9 +455,7 @@ if __name__ == '__main__':
     deberta_out, deberta_intrinsic_score = deberta_nli.check_intrinsic()
     genFact.write_logs(deberta_out, fname="deberta_grounded.json")
 
-    wandb_table = {"fs_wiki": factscore_out_vanilla["score"], "fs_grounded": factscore_out["score"], "deberta_grounded": factscore_out["deberta_score_intrinsic"],
-                   "fs_grounded_wiki": fs_updated_score}
-    wandb_push_json(wandb_table)
+
     #Checks the wrong facts with extrinsic checking over Wikipedia. Gives final NLI score.
     deberta_nli.score_out = fs_extrinsic_out    
     deberta_extrinsic_out, deberta_final_score = deberta_nli.check_extrinsic(factscore_out["wrong_facts"])
@@ -460,12 +464,16 @@ if __name__ == '__main__':
     #Calculates the final pooled prediction (inside of pooled_decisions) and final pooled score.
     pooled_decisions, pooled_score = get_pooled_score(deberta_extrinsic_out)
 
-    wandb_table = {"fs_wiki": factscore_out_vanilla["score"], "fs_grounded": factscore_out["score"],
+    deberta_score_dict = {
                    "deberta_grounded": factscore_out["deberta_score_intrinsic"],
-                   "fs_grounded_wiki": fs_updated_score, "deberta_grounded_wiki": deberta_final_score,"pooled_score":pooled_score}
-    wandb_push_json(wandb_table)
+                "deberta_grounded_wiki": deberta_final_score,"pooled_score":pooled_score}
+    wandb_push_json(deberta_score_dict)
 
-    wandb_table = {"generations": factscore_out["generations"], "fs_hallucinations": fs_updated_wrong_facts, "regenerations": regenerations}
+    db_regeneration = factscore_out["generations"]
+    #db_regenerations = regenerate_text(factscore_out["generations"], flatten_hallucinations(fs_updated_wrong_facts))
+
+    wandb_table = {"generations": factscore_out["generations"], "db_hallucinations": fs_updated_wrong_facts,
+                   'db_regenerations':db_regenerations}
     wandb_push_table(wandb_table)
-
+    '''
     print("done")

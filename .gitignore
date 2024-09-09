@@ -1,4 +1,7 @@
 .cache
+.DS_Store
+__pycache__/
+utils/__pycache__/
 results/archived
 results/genfact
 results/test
