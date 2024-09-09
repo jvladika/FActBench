@@ -150,7 +150,8 @@ class FactScorer(object):
                 topics = tqdm(topics)
 
             atomic_facts = []
-            for topic, gen in zip(topics, generations):
+            print ("Generating Atomic Facts.")
+            for topic, gen in tqdm(zip(topics, generations),total = len(generations)):
                 # optionally, first detect if the response is abstained
                 response_abstained = is_response_abstained(gen, self.abstain_detection_type)
                 if response_abstained:
@@ -188,8 +189,10 @@ class FactScorer(object):
         init_scores = []
         decisions = []
         wrong_facts = []
-        for topic, generation, facts, grounding in zip(topics, generations, atomic_facts, groundings):
-            print (f"Running for the follow facts. {facts}")
+
+        print("Getting score from FS.")
+        for topic, generation, facts, grounding in tqdm(zip(topics, generations, atomic_facts, groundings), total=len(generations)):
+            #print (f"Running for the follow facts. {facts}")
             if facts is None:
                 decisions.append(None)
             else:
