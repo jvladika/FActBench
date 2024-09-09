@@ -439,8 +439,8 @@ if __name__ == '__main__':
     # test regeneration
     fs_regenerations = regenerate_text(factscore_out["generations"], flatten_hallucinations(fs_updated_wrong_facts))
 
-    wandb_table = {"generations": factscore_out["generations"], "fs_hallucinations": fs_updated_wrong_facts,
-                   "fs_regenerations": fs_regenerations}
+    wandb_table = {"generations": factscore_out["generations"], "hallucinations": fs_updated_wrong_facts,
+                   "regenerations": fs_regenerations}
     wandb_push_table(wandb_table)
 
     '''
@@ -472,8 +472,8 @@ if __name__ == '__main__':
     db_regeneration = factscore_out["generations"]
     #db_regenerations = regenerate_text(factscore_out["generations"], flatten_hallucinations(fs_updated_wrong_facts))
 
-    wandb_table = {"generations": factscore_out["generations"], "db_hallucinations": fs_updated_wrong_facts,
-                   'db_regenerations':db_regenerations}
+    wandb_table = {"generations": factscore_out["generations"], "hallucinations": fs_updated_wrong_facts,
+                   'regenerations':db_regenerations}
     wandb_push_table(wandb_table)
     '''
     print("done")

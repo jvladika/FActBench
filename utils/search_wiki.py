@@ -13,7 +13,7 @@ def search_wiki(claims: str):
 
     idx = 0
     for claim in claims:
-        print(idx)
+
         text = claim[:300]
 
         url = f"https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch={text}&format=json"
@@ -54,7 +54,7 @@ def search_wiki(claims: str):
             snippet = result['snippet']
             snippets.append(snippet)
 
-        print(claim, titles)
+        #print(claim, titles)
 
         all_titles.append(titles)
         all_snippets.append(snippets)

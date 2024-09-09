@@ -19,7 +19,7 @@ from utils.fscore_utils import get_wiki_topic
 class FactScorer(object):
 
     def __init__(self,
-                 model_name="retrieval+ChatGPT",
+                 model_name="GPT4-mini",
                  data_dir=".cache/factscore",
                  model_dir=".cache/factscore",
                  cache_dir=".cache/factscore",

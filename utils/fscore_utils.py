@@ -14,7 +14,10 @@ def get_openai_key():
 def flatten_hallucinations(hallucinations):
     flat_list = []
     for hallucination in hallucinations:
-        hal = [h['atom'] for h in hallucination]
+        if not hallucination:
+            hal = []
+        else:
+            hal = [h['atom'] for h in hallucination]
         flat_list.append(hal)
     return flat_list
 def regenerate_text(generations, hallucinations):
