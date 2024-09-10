@@ -303,10 +303,13 @@ class FactScorer(object):
 
 
     def search_passage_till_success(self, topic, atom, generation, knowledge_source) -> List:
+        passages = []
         try:
             passages = self.retrieval[knowledge_source].get_passages(topic, atom, k=5)
+            print ("got passage using  provided topic")
         except:
             # try all suggested topics until a match is found
+            print("didn't get passage using  provided topic")
             topics = search_wiki(generation)
             if not topic:
                 # if we are in the get topic per AF mode. The LLM generated topic would be tested first.
@@ -315,9 +318,16 @@ class FactScorer(object):
 
             success = False
             idx = 0
+            print ( f"trying out {len(topics)} topics from search_Wiki function.")
+            if len(topics) == 1:
+                print ("Problem found")
+                print ("Generation: ", generation)
+                print ("Topics:", topics)
             while (success == False):
+                if idx > len(topics):
+                    print (f"Exhausted all options for this generation, no DB topic match found! Generation: {generation} \n\n Assigning dummpy empty passage")
+                    return passages
                 try:
-                    assert idx < len(topics), f"Exhausted all options, no DB topic match found!"
                     topic = topics[idx]
                     passages = self.retrieval[knowledge_source].get_passages(topic, atom, k=5)
                     success = True
