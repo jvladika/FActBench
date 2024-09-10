@@ -19,7 +19,7 @@ device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cp
 
 
 fs_logs_available = {
-    'o57ce46c': "2024-09-09_23-33-10"
+    'o57ce46c': "2024-09-10_18-10-06"
 }
 
 class GenFact:
