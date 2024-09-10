@@ -96,8 +96,9 @@ class GenFact:
 
     def read_logs(self, fs_cache_dir:str)-> tuple:
 
-        with open(os.path.join(fs_cache_dir, "factscore_vanilla.json")) as f:
-            factscore_out_vanilla = json.load(f)
+        #with open(os.path.join(fs_cache_dir, "factscore_vanilla.json")) as f:
+        #    factscore_out_vanilla = json.load(f)
+        factscore_out_vanilla = {"score": 0}
 
         with open(os.path.join(fs_cache_dir, "factscore_grounded.json")) as f:
             factscore_out = json.load(f)
