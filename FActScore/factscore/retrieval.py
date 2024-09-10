@@ -1,8 +1,8 @@
 import json
 import time
 import os
-
 import sqlite3
+
 import numpy as np
 import pickle as pkl
 
@@ -19,6 +19,8 @@ class DocDB(object):
 
     def __init__(self, db_path=None, data_path=None):
         self.db_path = db_path
+        print (os.getcwd())
+        self.db_path = ".cache/factscore/enwiki-20230401.db"
         self.connection = sqlite3.connect(self.db_path, check_same_thread=False)
 
         cursor = self.connection.cursor()
