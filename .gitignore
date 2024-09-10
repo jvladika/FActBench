@@ -3,7 +3,6 @@
 __pycache__/
 utils/__pycache__/
 results/archived
-results/genfact
 results/test
 api.key
 /FActScore/fscore/

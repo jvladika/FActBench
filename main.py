@@ -8,8 +8,6 @@ from utils.wandb_utils import wandb_init_run, wandb_push_json, wandb_push_table
 from utils.fscore_utils import csv_to_jsonl_for_factscore, regenerate_text, flatten_hallucinations
 from datetime import datetime
 import nltk
-import numpy as np
-import os
 nltk.download('punkt_tab')
 from dotenv import load_dotenv
 load_dotenv()
@@ -19,7 +17,10 @@ from transformers import AutoTokenizer, AutoModelForSequenceClassification
 import torch
 device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
 
-fs_logs_available = {}
+
+fs_logs_available = {
+    'o57ce46c': "2024-09-09_23-33-10"
+}
 
 class GenFact:
     def __init__(self, args: Optional[List[str]] = None):
@@ -92,6 +93,20 @@ class GenFact:
         fname = os.path.join(self.log_dir,fname)
         with open(fname, 'w') as fp:
             json.dump(out, fp)
+
+    def read_logs(self, fs_cache_dir:str)-> tuple:
+
+        with open(os.path.join(fs_cache_dir, "factscore_vanilla.json")) as f:
+            factscore_out_vanilla = json.load(f)
+
+        with open(os.path.join(fs_cache_dir, "factscore_grounded.json")) as f:
+            factscore_out = json.load(f)
+
+        with open(os.path.join(fs_cache_dir, "factscore_grounded_extrinsic.json")) as f:
+            fs_extrinsic_out = json.load(f)
+
+        return (factscore_out_vanilla, factscore_out, fs_extrinsic_out)
+
 
     def fs_get_extrinsic_af(self, topics, wrong_facts, groundings,generations, grounding_provided):
         # Check if the wrongly classified facts are "wrong" or just not present in the article.
@@ -412,36 +427,47 @@ if __name__ == '__main__':
 
     genFact = GenFact(args)
 
-    wandb_init_run(run_path=args.input_path, config = genFact.args)
+    base_run_id = wandb_init_run(run_path=args.input_path, config = genFact.args)
+
+    if base_run_id in fs_logs_available.keys():
+        fs_cache_dir = os.path.dirname(genFact.log_dir)
+        fs_cache_dir = os.path.join(fs_cache_dir,fs_logs_available[base_run_id])
+        genFact.log_dir = fs_cache_dir
+
+        factscore_out_vanilla, factscore_out, factscore_out  = genFact.read_logs(fs_cache_dir)
+        genFact["factscore_logs"] = factscore_out
+        print (f"UPDATE: Run outputs would be locally stored at the updated location:  {fs_cache_dir}")
 
 
-    print ("Running Vanilla FactScore")
-    factscore_out_vanilla = genFact.run_factscrorer(grounding_provided = False )
-    genFact.write_logs(factscore_out_vanilla, fname="factscore_vanilla.json")
+    else:
 
-    print ("Running Factscore with grounded document")
-    factscore_out = genFact.run_factscrorer(grounding_provided=args.grounding_provided)
-    genFact.write_logs(factscore_out, fname="factscore_grounded.json")
+        print ("Running Vanilla FactScore")
+        factscore_out_vanilla = genFact.run_factscrorer(grounding_provided = False )
+        genFact.write_logs(factscore_out_vanilla, fname="factscore_vanilla.json")
 
-
-    fs_extrinsic_af = genFact.fs_get_extrinsic_af(topics = factscore_out["topics"], wrong_facts = factscore_out["wrong_facts"],
-                groundings=  factscore_out["groundings"], generations = factscore_out["generations"],
-                                            grounding_provided= factscore_out["grounding_provided"])
-    fs_extrinsic_out = genFact.fs_extrinsic_score(fs_extrinsic_af)
-    genFact.write_logs(factscore_out, fname="factscore_grounded_extrinsic.json")
+        print ("Running Factscore with grounded document")
+        factscore_out = genFact.run_factscrorer(grounding_provided=args.grounding_provided)
+        genFact.write_logs(factscore_out, fname="factscore_grounded.json")
 
 
-    fs_updated_score, fs_updated_wrong_facts = genFact.get_updated_score(factscore_out,fs_extrinsic_out)
-    wandb_table = {"fs_wiki": factscore_out_vanilla["score"], "fs_grounded": factscore_out["score"],
-                   "fs_grounded_wiki": fs_updated_score}
-    wandb_push_json(wandb_table)
+        fs_extrinsic_af = genFact.fs_get_extrinsic_af(topics = factscore_out["topics"], wrong_facts = factscore_out["wrong_facts"],
+                    groundings=  factscore_out["groundings"], generations = factscore_out["generations"],
+                                                grounding_provided= factscore_out["grounding_provided"])
+        fs_extrinsic_out = genFact.fs_extrinsic_score(fs_extrinsic_af)
+        genFact.write_logs(fs_extrinsic_out, fname="factscore_grounded_extrinsic.json")
 
-    # test regeneration
-    fs_regenerations = regenerate_text(factscore_out["generations"], flatten_hallucinations(fs_updated_wrong_facts))
 
-    wandb_table = {"generations": factscore_out["generations"], "hallucinations": fs_updated_wrong_facts,
-                   "regenerations": fs_regenerations}
-    wandb_push_table(wandb_table)
+        fs_updated_score, fs_updated_wrong_facts = genFact.get_updated_score(factscore_out,fs_extrinsic_out)
+        wandb_table = {"fs_wiki": factscore_out_vanilla["score"], "fs_grounded": factscore_out["score"],
+                       "fs_grounded_wiki": fs_updated_score}
+        wandb_push_json(wandb_table)
+
+        # test regeneration
+        fs_regenerations = regenerate_text(factscore_out["generations"], flatten_hallucinations(fs_updated_wrong_facts))
+
+        wandb_table = {"generations": factscore_out["generations"], "hallucinations": fs_updated_wrong_facts,
+                       "regenerations": fs_regenerations}
+        wandb_push_table(wandb_table)
 
     '''
     #Creates new class for deberta predictions. Loads a model from HuggingFace.
