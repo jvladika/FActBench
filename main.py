@@ -19,7 +19,7 @@ device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cp
 
 
 fs_logs_available = {
-    'o57ce46c': "2024-09-09_23-33-10"
+  #  'o57ce46c': "2024-09-09_23-33-10"
 }
 
 class GenFact:
@@ -96,8 +96,9 @@ class GenFact:
 
     def read_logs(self, fs_cache_dir:str)-> tuple:
 
-        with open(os.path.join(fs_cache_dir, "factscore_vanilla.json")) as f:
-            factscore_out_vanilla = json.load(f)
+        #with open(os.path.join(fs_cache_dir, "factscore_vanilla.json")) as f:
+        #    factscore_out_vanilla = json.load(f)
+        factscore_out_vanilla = {"score": 0}
 
         with open(os.path.join(fs_cache_dir, "factscore_grounded.json")) as f:
             factscore_out = json.load(f)
