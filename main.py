@@ -19,7 +19,7 @@ device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cp
 
 
 fs_logs_available = {
-    'o57ce46c': "2024-09-09_23-33-10",
+    'o57ce46c': "2024-09-10_18-10-06",
     "qeho5s6u": '2024-09-10_18-15-49'
 
 }
@@ -51,7 +51,6 @@ class GenFact:
             for line in f:
                 dp = json.loads(line)
                 tot += 1
-
                 if self.args.use_atomic_facts:
                     assert "annotations" in dp, "You can specify `--use_atomic_facts` only when atomic facts are available in the input data already."
                     if dp["annotations"] is None:
@@ -459,8 +458,6 @@ if __name__ == '__main__':
                                                 grounding_provided= factscore_out["grounding_provided"])
         fs_extrinsic_out = genFact.fs_extrinsic_score(fs_extrinsic_af)
         genFact.write_logs(fs_extrinsic_out, fname="factscore_grounded_extrinsic.json")
-
-        ##### for the run that crashed, read from logs and try to fix this error.
 
 
         fs_updated_score, fs_updated_wrong_facts = genFact.get_updated_score(factscore_out,fs_extrinsic_out)
