@@ -441,9 +441,10 @@ if __name__ == '__main__':
 
     else:
 
-        print ("Running Vanilla FactScore")
-        factscore_out_vanilla = genFact.run_factscrorer(grounding_provided = False )
-        genFact.write_logs(factscore_out_vanilla, fname="factscore_vanilla.json")
+        #print ("Running Vanilla FactScore")
+        #factscore_out_vanilla = genFact.run_factscrorer(grounding_provided = False )
+        #genFact.write_logs(factscore_out_vanilla, fname="factscore_vanilla.json")
+        factscore_out_vanilla = {"score":0}
 
         print ("Running Factscore with grounded document")
         factscore_out = genFact.run_factscrorer(grounding_provided=args.grounding_provided)

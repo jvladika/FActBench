@@ -329,7 +329,7 @@ class FactScorer(object):
                     return passages
                 try:
                     topic = topics[idx]
-                    passages = self.retrieval[knowledge_source].get_passages(topic, atom, k=5)
+                    passages = self.retrieval[knowledge_source].get_passages(topic, atom, k=3)
                     success = True
                 except:
                     idx += 1
