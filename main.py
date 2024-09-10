@@ -43,6 +43,8 @@ class GenFact:
                         abstain_detection_type=self.args.abstain_detection_type,
                         grounding_provided=self.args.grounding_provided)
 
+    def add_item(self, item) -> None:
+        self.factscore_logs = item
     def run_factscrorer(self, grounding_provided:bool) -> dict:
 
         tot = 0
@@ -98,8 +100,9 @@ class GenFact:
 
     def read_logs(self, fs_cache_dir:str)-> tuple:
 
-        with open(os.path.join(fs_cache_dir, "factscore_vanilla.json")) as f:
-            factscore_out_vanilla = json.load(f)
+        #with open(os.path.join(fs_cache_dir, "factscore_vanilla.json")) as f:
+        #    factscore_out_vanilla = json.load(f)
+        factscore_out_vanilla = {'score': 0}
 
         with open(os.path.join(fs_cache_dir, "factscore_grounded.json")) as f:
             factscore_out = json.load(f)
@@ -141,12 +144,15 @@ class GenFact:
         for idx, afs in enumerate(decision_after):
             if len(afs) > 0:
                 for af in afs:
-                    if decision_before[idx][af["idx"]]['is_supported'] != af["is_supported"]:
-                        print(f"Updating the decision for the Atomic Fact: {af} for sample {idx}")
-                        decision_before[idx][af["idx"]]['is_supported'] = af["is_supported"]
+                    try:
+                        if decision_before[idx][af["idx"]]['is_supported'] != af["is_supported"]:
+                            print(f"Updating the decision for the Atomic Fact: {af} for sample {idx}")
+                            decision_before[idx][af["idx"]]['is_supported'] = af["is_supported"]
+                    except:
+                        print(f"Failed to Update the decision for the Atomic Fact: {af} for sample {idx}")
                         count += 1
-        scores = [np.mean([d["is_supported"]  for d in decisions]) for decisions in decision_before]
-        hallucinations = [[d for d in decisions if not d["is_supported"]] for decisions in decision_before]
+        scores = [np.mean([d["is_supported"] for d in decisions if d is not None]) for decisions in decision_before if decisions is not None]
+        hallucinations = [[d for d in decisions if not d["is_supported"]] for decisions in decision_before if decisions is not None]
 
         updated_score = np.mean(scores)
         logging.critical("FActScore After extrinsic check = %.1f%%" % (100 * updated_score))
@@ -436,9 +442,14 @@ if __name__ == '__main__':
         fs_cache_dir = os.path.join(fs_cache_dir,fs_logs_available[base_run_id])
         genFact.log_dir = fs_cache_dir
 
-        factscore_out_vanilla, factscore_out, factscore_out  = genFact.read_logs(fs_cache_dir)
-        genFact["factscore_logs"] = factscore_out
+        factscore_out_vanilla, factscore_out, fs_extrinsic_out  = genFact.read_logs(fs_cache_dir)
+        genFact.add_item(factscore_out)
         print (f"UPDATE: Run outputs would be locally stored at the updated location:  {fs_cache_dir}")
+
+        fs_updated_score, fs_updated_wrong_facts = genFact.get_updated_score(factscore_out, fs_extrinsic_out)
+        wandb_table = {"fs_wiki": factscore_out_vanilla["score"], "fs_grounded": factscore_out["score"],
+                       "fs_grounded_wiki": fs_updated_score}
+        wandb_push_json(wandb_table)
 
 
     else:
