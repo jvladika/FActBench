@@ -6,6 +6,7 @@ import os, sys, logging, time, json
 import numpy as np
 import re
 from utils.search_wiki import search_wiki
+from tqdm import tqdm
 
 def get_openai_key():
     openai_tok = os.environ.get("OPENAI_API_KEY")
@@ -21,13 +22,14 @@ def flatten_hallucinations(hallucinations):
         flat_list.append(hal)
     return flat_list
 def regenerate_text(generations, hallucinations):
+    print ("regenerating text")
     regenerations = []
     num_rate_errors = 0
     openai_client = OpenAI(api_key=get_openai_key())
     prompts = [(
 f"Your task is to remove factually incorrect information from the provided text. Do not include any new information, simple remove the list of atomic facts from the given text."
                    f"\n Text: {g} \n\n Atomic Facts to remove: {h} \n New Text: ") for g,h in zip(generations,hallucinations)]
-    for prompt in prompts:
+    for prompt in tqdm(prompts):
         received = False
         while not received:
             try:

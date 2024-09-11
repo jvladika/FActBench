@@ -24,6 +24,7 @@ fs_logs_available = {
     'o57ce46c': "2024-09-10_18-10-06",
     "qeho5s6u": '2024-09-10_18-15-49',
     "aw1b1yi1": "2024-09-10_18-12-17",
+    "1od31evk": "2024-09-10_22-16-38", #download this from gdrive link
 
 }
 
