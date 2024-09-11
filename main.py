@@ -469,7 +469,7 @@ if __name__ == '__main__':
     else:
 
         #print ("Running Vanilla FactScore")
-        #factscore_out_vanilla = genFact.run_factscrorer(grounding_provided = False )
+        factscore_out_vanilla = genFact.run_factscrorer(grounding_provided = False )
         #genFact.write_logs(factscore_out_vanilla, fname="factscore_vanilla.json")
         factscore_out_vanilla = {"score":0}
 
@@ -489,13 +489,6 @@ if __name__ == '__main__':
         wandb_table = {"fs_wiki": factscore_out_vanilla["score"], "fs_grounded": factscore_out["score"],
                        "fs_grounded_wiki": fs_updated_score}
         wandb_push_json(wandb_table)
-
-        # test regeneration
-        fs_regenerations = regenerate_text(factscore_out["generations"], flatten_hallucinations(fs_updated_wrong_facts))
-
-        wandb_table = {"generations": factscore_out["generations"], "hallucinations": fs_updated_wrong_facts,
-                       "regenerations": fs_regenerations}
-        wandb_push_table(wandb_table)
 
 
     #Creates new class for deberta predictions. Loads a model from HuggingFace.
