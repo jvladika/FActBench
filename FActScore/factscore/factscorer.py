@@ -233,7 +233,7 @@ class FactScorer(object):
         extrinsic_facts = []
 
         for topic, generation, facts, grounding in zip(topics, generations, wrong_facts, groundings):
-            print(f"Running for the follow wrongly classified facts to check if they are intrinsic or extrinsic. {facts}")
+            #print(f"Running for the follow wrongly classified facts to check if they are intrinsic or extrinsic. {facts}")
             if facts is None:
                 decisions.append(None)
             else:
@@ -272,7 +272,7 @@ class FactScorer(object):
         extrinsic_hallucinated_facts = []
 
 
-        for topic, generation, facts in zip(topics, generations, extrinsic_facts):
+        for topic, generation, facts in tqdm(zip(topics, generations, extrinsic_facts), total = len(generations)):
             print(f"Checking the wrongly classified text through extrinsic fact checking using knowledge source {knowledge_source} for the following facts. \n {facts}")
             if facts is None:
                 decisions.append(None)
@@ -298,7 +298,7 @@ class FactScorer(object):
                "wrong_facts": extrinsic_hallucinated_facts,
                "num_facts_per_response": np.mean([len(d) for d in decisions if d is not None])}
 
-        print ("The following facts are still classified as hallucinations after Extrinsic Fact Checking: \n {}".format(extrinsic_facts))
+        #print ("The following facts are still classified as hallucinations after Extrinsic Fact Checking: \n {}".format(extrinsic_facts))
         return self.extrinsic_out
 
 
