@@ -232,7 +232,7 @@ class FactScorer(object):
         decisions = []
         extrinsic_facts = []
 
-        for topic, generation, facts, grounding in zip(topics, generations, wrong_facts, groundings):
+        for topic, generation, facts, grounding in tqdm(zip(topics, generations, wrong_facts, groundings),total = len(generations)):
             #print(f"Running for the follow wrongly classified facts to check if they are intrinsic or extrinsic. {facts}")
             if facts is None:
                 decisions.append(None)
