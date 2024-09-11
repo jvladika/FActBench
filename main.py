@@ -15,6 +15,8 @@ import os
 import numpy as np
 from transformers import AutoTokenizer, AutoModelForSequenceClassification
 import torch
+from tqdm import tqdm
+
 device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
 
 
@@ -167,11 +169,18 @@ class GenFact:
 
 class DebertaNli:
     def __init__(self, score_out, decisions, groundings, fs):
+        new_decisions = list()
+        for dec in decisions:
+            if dec is None:
+                new_decisions.append([{'atom': 'This is a statement.', 'is_supported': True, 'idx': None, 'wiki_context': 'Title: Article\nText: The statement is true. \n'}])
+            else:
+                new_decisions.append(dec)
 
+        self.decisions = new_decisions 
         self.score_out = score_out
-        self.decisions = decisions
         self.groundings = groundings
         self.fs = fs
+        self.fs.register_knowledge_source()
 
         self.model_name = "tasksource/deberta-base-long-nli"
         self.tokenizer = AutoTokenizer.from_pretrained(self.model_name)
@@ -199,7 +208,8 @@ class DebertaNli:
         nli_decisions = list()
         deberta_scores = list()
         
-        for data_instance, article in zip(self.decisions, self.groundings):
+        print("Deberta checking intrinsic facts.")
+        for data_instance, article in tqdm(zip(self.decisions, self.groundings), total=len(self.decisions)):
             nli_results = list()
 
             for atom_instance in data_instance:
@@ -215,7 +225,8 @@ class DebertaNli:
         new_decisions = list()
         wrong_facts = list()
 
-        for decision, nli_prediction in zip(self.decisions, nli_decisions):
+        print("Intrinsic check done. Getting the wiki articles before extrinsic checking.")
+        for decision, nli_prediction in tqdm(zip(self.decisions, nli_decisions), total=len(nli_decisions)):
             new_list = list()
             for dec, pred in zip(decision, nli_prediction):
                 dec["nli_intrinsic"] = pred
@@ -257,7 +268,8 @@ class DebertaNli:
         nli_decisions = list()
         deberta_scores = list()
 
-        for data_instance, wf in zip(self.decisions, wrong_facts):
+        print("Deberta checking extrinsic facts.")
+        for data_instance, wf in tqdm(zip(self.decisions, wrong_facts), total=len(self.decisions)):
             nli_results = list()
 
             fact_idx = 0
@@ -484,23 +496,27 @@ if __name__ == '__main__':
                        "regenerations": fs_regenerations}
         wandb_push_table(wandb_table)
 
-    '''
+
     #Creates new class for deberta predictions. Loads a model from HuggingFace.
     deberta_nli = DebertaNli(score_out = factscore_out,
                              decisions =  factscore_out["decisions"],
                               groundings = factscore_out["groundings"],
                               fs = genFact.fs)
     
+    print("Loaded Deberta.")
     #Output is the same as factscore_out, but with a new attribute in dictionaries with NLI predictions. 
     #Gives intrinsic NLI score.
     deberta_out, deberta_intrinsic_score = deberta_nli.check_intrinsic()
     genFact.write_logs(deberta_out, fname="deberta_grounded.json")
 
+    print("Deberta intrinsic done.\n\n")
 
     #Checks the wrong facts with extrinsic checking over Wikipedia. Gives final NLI score.
-    deberta_nli.score_out = fs_extrinsic_out    
-    deberta_extrinsic_out, deberta_final_score = deberta_nli.check_extrinsic(factscore_out["wrong_facts"])
+    deberta_nli.score_out = deberta_out    
+    deberta_extrinsic_out, deberta_final_score = deberta_nli.check_extrinsic(factscore_out["deberta_wrong_facts"])
     genFact.write_logs(deberta_extrinsic_out, fname="deberta_grounded_extrinsic.json")
+
+    print("Deberta extrinsic done.\n\n")
 
     #Calculates the final pooled prediction (inside of pooled_decisions) and final pooled score.
     pooled_decisions, pooled_score = get_pooled_score(deberta_extrinsic_out)
@@ -516,5 +532,5 @@ if __name__ == '__main__':
     wandb_table = {"generations": factscore_out["generations"], "hallucinations": fs_updated_wrong_facts,
                    'regenerations':db_regenerations}
     wandb_push_table(wandb_table)
-    '''
+
     print("done")
