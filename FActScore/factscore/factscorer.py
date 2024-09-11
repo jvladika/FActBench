@@ -298,7 +298,7 @@ class FactScorer(object):
                "wrong_facts": extrinsic_hallucinated_facts,
                "num_facts_per_response": np.mean([len(d) for d in decisions if d is not None])}
 
-        #print ("The following facts are still classified as hallucinations after Extrinsic Fact Checking: \n {}".format(extrinsic_facts))
+        print ("The following facts are still classified as hallucinations after Extrinsic Fact Checking: \n {}".format(extrinsic_facts))
         return self.extrinsic_out
 
 
@@ -309,7 +309,7 @@ class FactScorer(object):
             print ("got passage using  provided topic")
         except:
             # try all suggested topics until a match is found
-            print("didn't get passage using  provided topic")
+            #print("didn't get passage using  provided topic")
             topics = search_wiki(generation)
             if not topic:
                 # if we are in the get topic per AF mode. The LLM generated topic would be tested first.
@@ -318,7 +318,7 @@ class FactScorer(object):
 
             success = False
             idx = 0
-            print ( f"trying out {len(topics)} topics from search_Wiki function.")
+            #print ( f"trying out {len(topics)} topics from search_Wiki function.")
             if len(topics) == 1:
                 print ("Problem found")
                 print ("Generation: ", generation)
