@@ -9,7 +9,7 @@ from utils.search_wiki import search_wiki
 from tqdm import tqdm
 
 def get_openai_key():
-    openai_tok = os.environ.get("OPENAI_API_KEY")
+    openai_tok = "sk-fX7mzQeRvFNiJUIvSzlBYYUINih635LywarYaoBFHiT3BlbkFJlawZp_a4G7T2vZvWsDe1pj1M1vdcL8C9xswdMyNOAA"#os.environ.get("OPENAI_API_KEY")
     assert openai_tok and openai_tok != "<openai_token>", "OpenAI token is not defined"
     return openai_tok.strip()
 def flatten_hallucinations(hallucinations):
