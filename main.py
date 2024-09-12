@@ -189,7 +189,7 @@ class DebertaNli:
         self.model.to(device)
 
     def get_nli_class(self, premise, hypothesis):
-        model_input = self.tokenizer(premise, hypothesis, truncation=True, return_tensors="pt")
+        model_input = self.tokenizer(premise, hypothesis, truncation=True, max_length=4096, return_tensors="pt")
         model_output = self.model(model_input["input_ids"].to(device)) 
         prediction_probs = torch.softmax(model_output["logits"][0], -1).tolist()
         prediction_probs = np.array(prediction_probs)
@@ -524,9 +524,10 @@ if __name__ == '__main__':
 
     db_regeneration = factscore_out["generations"]
     #db_regenerations = regenerate_text(factscore_out["generations"], flatten_hallucinations(fs_updated_wrong_facts))
+    db_regenerations = ['']*len(factscore_out["generations"]) #regenerate_text(factscore_out["generations"], flatten_hallucinations(fs_updated_wrong_facts))
 
-    wandb_table = {"generations": factscore_out["generations"], "hallucinations": fs_updated_wrong_facts}
-                   #, 'regenerations':db_regenerations}
+    wandb_table = {"generations": factscore_out["generations"], "hallucinations": fs_updated_wrong_facts,
+                    'regenerations':db_regenerations}
     wandb_push_table(wandb_table)
 
     print("done")
