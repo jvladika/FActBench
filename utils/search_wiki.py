@@ -16,10 +16,13 @@ def search_wiki(claims: str):
 
         text = claim[:300]
 
-        url = f"https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch={text}&format=json"
-        response = requests.get(url)
-        data = response.json()
-        search_results = data['query']['search']
+        try:
+          url = f"https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch={text}&format=json"
+          response = requests.get(url)
+          data = response.json()
+          search_results = data['query']['search']
+        except:
+          print ("First failure in search wiki function")
 
         if len(search_results) <= 0:
             doc = nlp(text)
@@ -31,19 +34,24 @@ def search_wiki(claims: str):
                 new_query += e
                 new_query += " "
 
-            url = f"https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch={new_query}&format=json"
-            response = requests.get(url)
-            data = response.json()
-            search_results = data['query']['search']
+            try:
+              url = f"https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch={new_query}&format=json"
+              response = requests.get(url)
+              data = response.json()
+              search_results = data['query']['search']
 
-            if len(search_results) <= 0:
-                for e in ents:
-                    e = e.text
-                    new_query = e
-                    url = f"https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch={new_query}&format=json"
-                    response = requests.get(url)
-                    data = response.json()
-                    search_results.extend(data['query']['search'][:2])
+              if len(search_results) <= 0:
+                  for e in ents:
+                      e = e.text
+                      new_query = e
+                      url = f"https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch={new_query}&format=json"
+                      response = requests.get(url)
+                      data = response.json()
+                      search_results.extend(data['query']['search'][:2])
+            except:
+              print ("First failure in search wiki function")
+              return list()
+
 
         titles = list()
         snippets = list()
