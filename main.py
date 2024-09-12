@@ -492,13 +492,6 @@ if __name__ == '__main__':
                        "fs_grounded_wiki": fs_updated_score}
         wandb_push_json(wandb_table)
 
-        # test regeneration
-        fs_regenerations = regenerate_text(factscore_out["generations"], flatten_hallucinations(fs_updated_wrong_facts))
-
-        wandb_table = {"generations": factscore_out["generations"], "hallucinations": fs_updated_wrong_facts,
-                       "regenerations": fs_regenerations}
-        wandb_push_table(wandb_table)
-
 
     #Creates new class for deberta predictions. Loads a model from HuggingFace.
     deberta_nli = DebertaNli(score_out = factscore_out,
