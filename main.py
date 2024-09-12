@@ -26,6 +26,7 @@ fs_logs_available = {
     "aw1b1yi1": "2024-09-10_18-12-17",
     "1od31evk": "2024-09-10_22-16-38", #download this from gdrive link
     "5ujrnpzr": "2024-09-11_08-28-11",
+    "0363w13s":"2024-09-12_09-51-25"
 }
 
 class GenFact:
