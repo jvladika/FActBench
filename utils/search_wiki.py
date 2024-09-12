@@ -15,52 +15,46 @@ def search_wiki(claims: str):
     for claim in claims:
 
         text = claim[:300]
-
         try:
-          url = f"https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch={text}&format=json"
-          response = requests.get(url)
-          data = response.json()
-          search_results = data['query']['search']
+            url = f"https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch={text}&format=json"
+            response = requests.get(url)
+            data = response.json()
+            search_results = data['query']['search']
+
+            if len(search_results) <= 0:
+                doc = nlp(text)
+                ents = list(doc.ents)
+
+                new_query = ""
+                for e in ents:
+                    e = e.text
+                    new_query += e
+                    new_query += " "
+
+                url = f"https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch={new_query}&format=json"
+                response = requests.get(url)
+                data = response.json()
+                search_results = data['query']['search']
+
+                if len(search_results) <= 0:
+                    for e in ents:
+                        e = e.text
+                        new_query = e
+                        url = f"https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch={new_query}&format=json"
+                        response = requests.get(url)
+                        data = response.json()
+                        search_results.extend(data['query']['search'][:2])
+
+            titles = list()
+            snippets = list()
+            for result in search_results:
+                title = result['title']
+                titles.append(title)
+
+                snippet = result['snippet']
+                snippets.append(snippet)
         except:
-          print ("First failure in search wiki function")
-
-        if len(search_results) <= 0:
-            doc = nlp(text)
-            ents = list(doc.ents)
-
-            new_query = ""
-            for e in ents:
-                e = e.text
-                new_query += e
-                new_query += " "
-
-            try:
-              url = f"https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch={new_query}&format=json"
-              response = requests.get(url)
-              data = response.json()
-              search_results = data['query']['search']
-
-              if len(search_results) <= 0:
-                  for e in ents:
-                      e = e.text
-                      new_query = e
-                      url = f"https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch={new_query}&format=json"
-                      response = requests.get(url)
-                      data = response.json()
-                      search_results.extend(data['query']['search'][:2])
-            except:
-              print ("First failure in search wiki function")
-              return list()
-
-
-        titles = list()
-        snippets = list()
-        for result in search_results:
-            title = result['title']
-            titles.append(title)
-
-            snippet = result['snippet']
-            snippets.append(snippet)
+            titles.append("Medicine")
 
         #print(claim, titles)
 
