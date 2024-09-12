@@ -25,7 +25,7 @@ fs_logs_available = {
     "qeho5s6u": '2024-09-10_18-15-49',
     "aw1b1yi1": "2024-09-10_18-12-17",
     "1od31evk": "2024-09-10_22-16-38", #download this from gdrive link
-
+    "5ujrnpzr": "2024-09-11_08-28-11",
 }
 
 class GenFact:
@@ -520,7 +520,7 @@ if __name__ == '__main__':
                 "deberta_grounded_wiki": deberta_final_score,"pooled_score":pooled_score}
     wandb_push_json(deberta_score_dict)
 
-    db_regeneration = factscore_out["generations"]
+    db_regenerations = factscore_out["generations"]
     #db_regenerations = regenerate_text(factscore_out["generations"], flatten_hallucinations(fs_updated_wrong_facts))
 
     wandb_table = {"generations": factscore_out["generations"], "hallucinations": fs_updated_wrong_facts,
