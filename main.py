@@ -190,7 +190,7 @@ class DebertaNli:
         self.model.to(device)
 
     def get_nli_class(self, premise, hypothesis):
-        model_input = self.tokenizer(premise, hypothesis, truncation=True, max_length=4096, return_tensors="pt")
+        model_input = self.tokenizer(premise, hypothesis, truncation=True, max_length=1024, return_tensors="pt")
         model_output = self.model(model_input["input_ids"].to(device)) 
         prediction_probs = torch.softmax(model_output["logits"][0], -1).tolist()
         prediction_probs = np.array(prediction_probs)

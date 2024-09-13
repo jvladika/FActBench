@@ -54,7 +54,7 @@ def search_wiki(claims: str):
                 snippet = result['snippet']
                 snippets.append(snippet)
         except:
-            titles.append("Medicine")
+            titles = ["Medicine"]
 
         #print(claim, titles)
 
