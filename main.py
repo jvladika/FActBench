@@ -28,6 +28,7 @@ fs_logs_available = {
     "5ujrnpzr": "2024-09-11_08-28-11",
     "0363w13s":"2024-09-12_09-51-25",
     "79g8acv4":"2024-09-12_10-41-02",
+    "jqfk1u3g": "2024-09-12_16-35-14",
 }
 
 class GenFact:
@@ -113,8 +114,9 @@ class GenFact:
         with open(os.path.join(fs_cache_dir, "factscore_grounded.json")) as f:
             factscore_out = json.load(f)
 
-        with open(os.path.join(fs_cache_dir, "factscore_grounded_extrinsic.json")) as f:
-            fs_extrinsic_out = json.load(f)
+        #with open(os.path.join(fs_cache_dir, "factscore_grounded_extrinsic.json")) as f:
+        #    fs_extrinsic_out = json.load(f)
+        fs_extrinsic_out = dict()
 
         return (factscore_out_vanilla, factscore_out, fs_extrinsic_out)
 
@@ -464,6 +466,12 @@ if __name__ == '__main__':
         genFact.add_item(factscore_out)
         print (f"UPDATE: Run outputs would be locally stored at the updated location:  {fs_cache_dir}")
 
+        fs_extrinsic_af = genFact.fs_get_extrinsic_af(topics = factscore_out["topics"], wrong_facts = factscore_out["wrong_facts"],
+                    groundings=  factscore_out["groundings"], generations = factscore_out["generations"],
+                                                grounding_provided= factscore_out["grounding_provided"])
+        fs_extrinsic_out = genFact.fs_extrinsic_score(fs_extrinsic_af)
+        genFact.write_logs(fs_extrinsic_out, fname="factscore_grounded_extrinsic.json")
+
         fs_updated_score, fs_updated_wrong_facts = genFact.get_updated_score(factscore_out, fs_extrinsic_out)
         wandb_table = {"fs_wiki": factscore_out_vanilla["score"], "fs_grounded": factscore_out["score"],
                        "fs_grounded_wiki": fs_updated_score}
@@ -480,6 +488,7 @@ if __name__ == '__main__':
         print ("Running Factscore with grounded document")
         factscore_out = genFact.run_factscrorer(grounding_provided=args.grounding_provided)
         genFact.write_logs(factscore_out, fname="factscore_grounded.json")
+
 
 
         fs_extrinsic_af = genFact.fs_get_extrinsic_af(topics = factscore_out["topics"], wrong_facts = factscore_out["wrong_facts"],
