@@ -114,9 +114,8 @@ class GenFact:
         with open(os.path.join(fs_cache_dir, "factscore_grounded.json")) as f:
             factscore_out = json.load(f)
 
-        #with open(os.path.join(fs_cache_dir, "factscore_grounded_extrinsic.json")) as f:
-        #    fs_extrinsic_out = json.load(f)
-        fs_extrinsic_out = dict()
+        with open(os.path.join(fs_cache_dir, "factscore_grounded_extrinsic.json")) as f:
+            fs_extrinsic_out = json.load(f)
 
         return (factscore_out_vanilla, factscore_out, fs_extrinsic_out)
 
@@ -465,12 +464,6 @@ if __name__ == '__main__':
         factscore_out_vanilla, factscore_out, fs_extrinsic_out  = genFact.read_logs(fs_cache_dir)
         genFact.add_item(factscore_out)
         print (f"UPDATE: Run outputs would be locally stored at the updated location:  {fs_cache_dir}")
-
-        fs_extrinsic_af = genFact.fs_get_extrinsic_af(topics = factscore_out["topics"], wrong_facts = factscore_out["wrong_facts"],
-                    groundings=  factscore_out["groundings"], generations = factscore_out["generations"],
-                                                grounding_provided= factscore_out["grounding_provided"])
-        fs_extrinsic_out = genFact.fs_extrinsic_score(fs_extrinsic_af)
-        genFact.write_logs(fs_extrinsic_out, fname="factscore_grounded_extrinsic.json")
 
         fs_updated_score, fs_updated_wrong_facts = genFact.get_updated_score(factscore_out, fs_extrinsic_out)
         wandb_table = {"fs_wiki": factscore_out_vanilla["score"], "fs_grounded": factscore_out["score"],
