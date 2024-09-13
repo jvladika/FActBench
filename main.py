@@ -26,6 +26,8 @@ fs_logs_available = {
     "aw1b1yi1": "2024-09-10_18-12-17",
     "1od31evk": "2024-09-10_22-16-38", #download this from gdrive link
     "5ujrnpzr": "2024-09-11_08-28-11",
+    "0363w13s":"2024-09-12_09-51-25",
+    "79g8acv4":"2024-09-12_10-41-02",
 }
 
 class GenFact:
@@ -189,7 +191,7 @@ class DebertaNli:
         self.model.to(device)
 
     def get_nli_class(self, premise, hypothesis):
-        model_input = self.tokenizer(premise, hypothesis, truncation=True, max_length=4096, return_tensors="pt")
+        model_input = self.tokenizer(premise, hypothesis, truncation=True, max_length=1024, return_tensors="pt")
         model_output = self.model(model_input["input_ids"].to(device)) 
         prediction_probs = torch.softmax(model_output["logits"][0], -1).tolist()
         prediction_probs = np.array(prediction_probs)

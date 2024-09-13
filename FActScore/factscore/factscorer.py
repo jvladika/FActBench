@@ -69,24 +69,25 @@ class FactScorer(object):
             v.save_cache()
 
     def register_knowledge_source(self, name="enwiki-20230401", db_path=None, data_path=None):
-        assert name not in self.retrieval, f"{name} already registered"
-        if db_path is None:
-            db_path = os.path.join(self.data_dir, f"{name}.db")
+        #assert name not in self.retrieval, f"{name} already registered"
+        if name not in self.retrieval:
+            if db_path is None:
+                db_path = os.path.join(self.data_dir, f"{name}.db")
 
-        if data_path is None:
-            data_path = os.path.join(self.data_dir, f"{name}.jsonl")
+            if data_path is None:
+                data_path = os.path.join(self.data_dir, f"{name}.jsonl")
 
-        cache_path = os.path.join(self.cache_dir, f"retrieval-{name}.json")
-        embed_cache_path = os.path.join(self.cache_dir, f"retrieval-{name}.pkl")
+            cache_path = os.path.join(self.cache_dir, f"retrieval-{name}.json")
+            embed_cache_path = os.path.join(self.cache_dir, f"retrieval-{name}.pkl")
 
-        self.db[name] = DocDB(db_path=db_path, data_path=data_path)
-        self.retrieval[name] = Retrieval(self.db[name], cache_path, embed_cache_path, batch_size=self.batch_size)
-        if "npm" in self.model_name:
-            cache_path = os.path.join(self.cache_dir, f"bm25-{name}.json")
-            embed_cache_path = os.path.join(self.cache_dir, f"bm25-{name}.pkl")
-            self.npm[name] = NPM(Retrieval(self.db[name], cache_path, embed_cache_path, "bm25"),
-                                 "npm-single",
-                                 cache_file=os.path.join(self.cache_dir, f"npm-{name}.pkl"))
+            self.db[name] = DocDB(db_path=db_path, data_path=data_path)
+            self.retrieval[name] = Retrieval(self.db[name], cache_path, embed_cache_path, batch_size=self.batch_size)
+            if "npm" in self.model_name:
+                cache_path = os.path.join(self.cache_dir, f"bm25-{name}.json")
+                embed_cache_path = os.path.join(self.cache_dir, f"bm25-{name}.pkl")
+                self.npm[name] = NPM(Retrieval(self.db[name], cache_path, embed_cache_path, "bm25"),
+                                     "npm-single",
+                                     cache_file=os.path.join(self.cache_dir, f"npm-{name}.pkl"))
 
 
     def print_cost_estimates(self, total_words, task, model):
@@ -273,7 +274,7 @@ class FactScorer(object):
 
 
         for topic, generation, facts in tqdm(zip(topics, generations, extrinsic_facts), total = len(generations)):
-            print(f"Checking the wrongly classified text through extrinsic fact checking using knowledge source {knowledge_source} for the following facts. \n {facts}")
+            #print(f"Checking the wrongly classified text through extrinsic fact checking using knowledge source {knowledge_source} for the following facts. \n {facts}")
             if facts is None:
                 decisions.append(None)
             else:
