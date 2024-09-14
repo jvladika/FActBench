@@ -27,6 +27,8 @@ fs_logs_available = {
     "1od31evk": "2024-09-10_22-16-38", #download this from gdrive link
     "5ujrnpzr": "2024-09-11_08-28-11",
     "0363w13s":"2024-09-12_09-51-25",
+    "79g8acv4":"2024-09-12_10-41-02",
+    "jqfk1u3g": "2024-09-12_16-35-14",
     "zj6t2ti7" : "2024-09-13_16-13-34",
 }
 
@@ -191,7 +193,7 @@ class DebertaNli:
         self.model.to(device)
 
     def get_nli_class(self, premise, hypothesis):
-        model_input = self.tokenizer(premise, hypothesis, truncation=True, max_length=4096, return_tensors="pt")
+        model_input = self.tokenizer(premise, hypothesis, truncation=True, max_length=1024, return_tensors="pt")
         model_output = self.model(model_input["input_ids"].to(device)) 
         prediction_probs = torch.softmax(model_output["logits"][0], -1).tolist()
         prediction_probs = np.array(prediction_probs)
@@ -480,6 +482,7 @@ if __name__ == '__main__':
         print ("Running Factscore with grounded document")
         factscore_out = genFact.run_factscrorer(grounding_provided=args.grounding_provided)
         genFact.write_logs(factscore_out, fname="factscore_grounded.json")
+
 
 
         fs_extrinsic_af = genFact.fs_get_extrinsic_af(topics = factscore_out["topics"], wrong_facts = factscore_out["wrong_facts"],
