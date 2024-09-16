@@ -76,8 +76,7 @@ class GenFact:
 
                 if self.args.n_samples is not None and tot == args.n_samples:
                     break
-        # todo: remove this later.
-        generations = [' '.join(generation.split()[:200]) for generation in generations]
+
         out = self.fs.get_score(topics=topics,
                            generations=generations,
                            groundings=groundings,
