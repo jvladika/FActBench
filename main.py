@@ -29,7 +29,7 @@ fs_logs_available = {
     "0363w13s":"2024-09-12_09-51-25",
     "79g8acv4":"2024-09-12_10-41-02",
     "jqfk1u3g": "2024-09-12_16-35-14",
-}
+    "ca5e1s8g":"2024-09-15_20-36-40"}
 
 class GenFact:
     def __init__(self, args: Optional[List[str]] = None):
@@ -76,6 +76,8 @@ class GenFact:
 
                 if self.args.n_samples is not None and tot == args.n_samples:
                     break
+        # todo: remove this later.
+        generations = [' '.join(generation.split()[:200]) for generation in generations]
         out = self.fs.get_score(topics=topics,
                            generations=generations,
                            groundings=groundings,
