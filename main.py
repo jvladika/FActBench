@@ -30,7 +30,10 @@ fs_logs_available = {
     "79g8acv4":"2024-09-12_10-41-02",
     "jqfk1u3g": "2024-09-12_16-35-14",
     "zj6t2ti7" : "2024-09-13_16-13-34",
-    "ca5e1s8g":"2024-09-15_20-36-40"
+    "ca5e1s8g":"2024-09-15_20-36-40",
+    "x3li1qsl": "2024-09-16_11-51-10",
+    "ov3uhzpp": "2024-09-15_18-14-45",
+    "ca5e1s8g": "2024-09-15_20-36-40",
 
 }
 
@@ -119,6 +122,7 @@ class GenFact:
 
         with open(os.path.join(fs_cache_dir, "factscore_grounded_extrinsic.json")) as f:
             fs_extrinsic_out = json.load(f)
+        #fs_extrinsic_out = dict()
 
         return (factscore_out_vanilla, factscore_out, fs_extrinsic_out)
 
