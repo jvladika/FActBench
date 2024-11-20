@@ -34,6 +34,7 @@ fs_logs_available = {
     "x3li1qsl": "2024-09-16_11-51-10",
     "ov3uhzpp": "2024-09-15_18-14-45",
     "ca5e1s8g": "2024-09-15_20-36-40",
+    "human-eval": "folder",
 
 }
 
@@ -113,6 +114,7 @@ class GenFact:
 
     def read_logs(self, fs_cache_dir:str)-> tuple:
 
+        fs_cache_dir = "results/genfact/humaneval_summarization/folder/"
         #with open(os.path.join(fs_cache_dir, "factscore_vanilla.json")) as f:
         #    factscore_out_vanilla = json.load(f)
         factscore_out_vanilla = {'score': 0}
@@ -120,11 +122,17 @@ class GenFact:
         with open(os.path.join(fs_cache_dir, "factscore_grounded.json")) as f:
             factscore_out = json.load(f)
 
+        with open(os.path.join(fs_cache_dir, "deberta_grounded.json")) as f:
+            deberta_out = json.load(f)
+
         with open(os.path.join(fs_cache_dir, "factscore_grounded_extrinsic.json")) as f:
             fs_extrinsic_out = json.load(f)
         #fs_extrinsic_out = dict()
 
-        return (factscore_out_vanilla, factscore_out, fs_extrinsic_out)
+        with open(os.path.join(fs_cache_dir, "deberta_grounded_extrinsic.json")) as f:
+            db_extrinsic_out = json.load(f)
+
+        return (factscore_out_vanilla, factscore_out, fs_extrinsic_out, deberta_out, db_extrinsic_out)
 
 
     def fs_get_extrinsic_af(self, topics, wrong_facts, groundings,generations, grounding_provided):
@@ -468,13 +476,16 @@ if __name__ == '__main__':
         fs_cache_dir = os.path.join(fs_cache_dir,fs_logs_available[base_run_id])
         genFact.log_dir = fs_cache_dir
 
-        factscore_out_vanilla, factscore_out, fs_extrinsic_out  = genFact.read_logs(fs_cache_dir)
+        factscore_out_vanilla, factscore_out, fs_extrinsic_out, deberta_out, db_extrinsic_out = genFact.read_logs(fs_cache_dir)
         genFact.add_item(factscore_out)
         print (f"UPDATE: Run outputs would be locally stored at the updated location:  {fs_cache_dir}")
 
         fs_updated_score, fs_updated_wrong_facts = genFact.get_updated_score(factscore_out, fs_extrinsic_out)
+
+        #db_regenerations = regenerate_text(factscore_out["generations"], flatten_hallucinations(fs_updated_wrong_facts))
         wandb_table = {"fs_wiki": factscore_out_vanilla["score"], "fs_grounded": factscore_out["score"],
                        "fs_grounded_wiki": fs_updated_score}
+        pooled_decisions, pooled_score = get_pooled_score(db_extrinsic_out)
         wandb_push_json(wandb_table)
 
 
@@ -505,6 +516,7 @@ if __name__ == '__main__':
 
 
     #Creates new class for deberta predictions. Loads a model from HuggingFace.
+    '''
     deberta_nli = DebertaNli(score_out = factscore_out,
                              decisions =  factscore_out["decisions"],
                               groundings = factscore_out["groundings"],
@@ -542,3 +554,4 @@ if __name__ == '__main__':
     wandb_push_table(wandb_table)
 
     print("done")
+    '''

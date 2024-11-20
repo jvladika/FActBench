@@ -29,7 +29,7 @@ def regenerate_text(generations, hallucinations):
     prompts = [(
 f"Your task is to remove factually incorrect information from the provided text. Do not include any new information, simple remove the list of atomic facts from the given text."
                    f"\n Text: {g} \n\n Atomic Facts to remove: {h} \n New Text: ") for g,h in zip(generations,hallucinations)]
-    for prompt in tqdm(prompts):
+    for prompt in tqdm(prompts[:10]):
         received = False
         while not received:
             try:
@@ -44,6 +44,7 @@ f"Your task is to remove factually incorrect information from the provided text.
                 received = True
                 topic = response.choices[0].message.content
                 regenerations.append(topic)
+                print (f"prompt: \n {prompt} \n new: \n {topic}")
 
             except:
                 regenerations.append("")

@@ -19,10 +19,7 @@ class OpenAIModel(LM):
 
     def load_model(self):
         # load api key
-        key_path = self.key_path
-        assert os.path.exists(key_path), f"Please place your OpenAI APT Key in {key_path}."
-        with open(key_path, 'r') as f:
-            api_key = f.readline()
+        api_key = os.environ.get("OPENAI_API_KEY")
         self.client = OpenAI(api_key=api_key.strip())
         self.model = self.model_name
 
