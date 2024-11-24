@@ -349,7 +349,7 @@ class DebertaNli:
 
         return self.score_out, np.mean(deberta_scores)
 
-def get_pooled_score(deberta_extrinsic_out):
+def get_pooled_score(deberta_extrinsic_out, mode = None):
     decisions = deberta_extrinsic_out["decisions"]
     print (decisions[0].keys())
     new_decisions = list()
@@ -359,7 +359,10 @@ def get_pooled_score(deberta_extrinsic_out):
         new_list = list()
     
         for dec in instance_decisions:
-            deberta_final = dec["nli_final_supported"]
+            if mode == 'intrinsic':
+                deberta_final = dec["nli_supported_intrinsic"]
+            else:
+                deberta_final = dec["nli_final_supported"]
             factscore_final = dec["is_supported"]
 
             #Pooled decision is True if both FactScore and NLI predictions are True.
@@ -522,6 +525,7 @@ if __name__ == '__main__':
     print("Deberta intrinsic done.\n\n")
     # Calculates the final pooled prediction (inside of pooled_decisions) and final pooled score.
     db_out_pooled_decisions, db_out_pooled_score = get_pooled_score(deberta_out)
+    genFact['db_out_pooled_decisions'] = db_out_pooled_decisions
 
     #Checks the wrong facts with extrinsic checking over Wikipedia. Gives final NLI score.
     deberta_nli.score_out = deberta_out    
