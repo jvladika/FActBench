@@ -159,6 +159,8 @@ class FactScorer(object):
                     atomic_facts.append(None)
                     continue
                 # continue only when the response is not abstained
+                if isinstance(gen,str) == False:
+                    gen = ''
                 curr_afs, _ = self.af_generator.run(gen)
                 curr_afs = [fact for _, facts in curr_afs for fact in facts]
                 if len(curr_afs)==0:
