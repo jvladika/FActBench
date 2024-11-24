@@ -69,9 +69,9 @@ class GenFact:
 
                 if self.args.n_samples is not None and tot == args.n_samples:
                     break
-        topics = topics[:20]
-        generations = generations[:20]
-        groundings = groundings[:20]
+        #topics = topics[:20]
+        #generations = generations[:20]
+        #groundings = groundings[:20]
         out = self.fs.get_score(topics=topics,
                            generations=generations,
                            groundings=groundings,
@@ -541,7 +541,7 @@ if __name__ == '__main__':
                 "deberta_grounded_wiki": deberta_final_score,"extrinsic_pooled_score":pooled_score}
     wandb_push_json(deberta_score_dict, table_name="db_table")
 
-    db_regenerations = factscore_out["generations"]
+    #db_regenerations = factscore_out["generations"]
     #db_regenerations = regenerate_text(factscore_out["generations"], flatten_hallucinations(fs_updated_wrong_facts))
     db_regenerations = ['']*len(factscore_out["generations"]) #regenerate_text(factscore_out["generations"], flatten_hallucinations(fs_updated_wrong_facts))
 
