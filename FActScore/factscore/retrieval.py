@@ -128,6 +128,7 @@ class Retrieval(object):
 
     def load_encoder(self):
         from sentence_transformers import SentenceTransformer
+        print ("loaded encorder")
         encoder = SentenceTransformer("sentence-transformers/" + self.retrieval_type)
         encoder = encoder#.cuda()
         encoder = encoder.eval()
@@ -177,6 +178,7 @@ class Retrieval(object):
         return [passages[i] for i in indices]
 
     def get_gtr_passages(self, topic, retrieval_query, passages, k):
+        print ("get gtr passage")
         if self.encoder is None:
             self.load_encoder()
         if topic in self.embed_cache:
@@ -194,6 +196,7 @@ class Retrieval(object):
         return [passages[i] for i in indices]
 
     def get_passages(self, topic, question, k):
+        print ("inside get_passages")
         retrieval_query = topic + " " + question.strip()
         cache_key = topic + "#" + retrieval_query
         
