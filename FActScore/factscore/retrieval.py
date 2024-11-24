@@ -128,11 +128,9 @@ class Retrieval(object):
 
     def load_encoder(self):
         from sentence_transformers import SentenceTransformer
-        print ("loaded encoder")
         encoder = SentenceTransformer("sentence-transformers/" + self.retrieval_type)
         encoder = encoder.cuda()
         encoder = encoder.eval()
-        print ("loaded")
         self.encoder = encoder
         assert self.batch_size is not None
     
@@ -179,9 +177,7 @@ class Retrieval(object):
         return [passages[i] for i in indices]
 
     def get_gtr_passages(self, topic, retrieval_query, passages, k):
-        print ("get gtr passage")
         if self.encoder is None:
-            print ("Attempting to load encoder")
             self.load_encoder()
         if topic in self.embed_cache:
             passage_vectors = self.embed_cache[topic]
@@ -195,15 +191,11 @@ class Retrieval(object):
                                             device=self.encoder.device)[0]
         scores = np.inner(query_vectors, passage_vectors)
         indices = np.argsort(-scores)[:k]
-        print ("passaeds foundi ncache")
         return [passages[i] for i in indices]
 
     def get_passages(self, topic, question, k):
-        print ("inside get_passages")
         retrieval_query = topic + " " + question.strip()
         cache_key = topic + "#" + retrieval_query
-        print (cache_key)
-        #print (self.cache.keys())
         
         if cache_key not in self.cache:
             passages = self.db.get_text_from_title(topic)
