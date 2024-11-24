@@ -200,8 +200,7 @@ class FactScorer(object):
             #print (f"Running for the follow facts. {facts}")
             if facts is None:
                 decisions.append(None)
-                scores.append(None)
-                wrong_facts.append(None)
+                wrong_facts.append([])
             else:
                 decision = self._get_score(topic, generation, facts, knowledge_source, grounding=grounding,
                                            grounding_provided=grounding_provided)
