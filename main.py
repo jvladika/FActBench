@@ -69,9 +69,9 @@ class GenFact:
 
                 if self.args.n_samples is not None and tot == args.n_samples:
                     break
-        topics = topics[:20]
-        generations = generations[:20]
-        groundings = groundings[:20]
+        topics = topics[:4]
+        generations = generations[:4]
+        groundings = groundings[:4]
         out = self.fs.get_score(topics=topics,
                            generations=generations,
                            groundings=groundings,
@@ -161,7 +161,7 @@ class GenFact:
                             decision_before[idx][af["idx"]]['is_supported'] = af["is_supported"]
                     except Exception as e:
                         print (e)
-                        print(f"Failed to Update the decision for the Atomic Fact: {af} for sample {idx}")
+                        print(f"Failed to Update the decision for the Atomic Fact: {af['atom']} for sample {idx}")
                         count += 1
         scores = [np.mean([d["is_supported"] for d in decisions if d is not None]) for decisions in decision_before if decisions is not None]
         hallucinations = [[d for d in decisions if not d["is_supported"]] for decisions in decision_before if decisions is not None]
