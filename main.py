@@ -69,9 +69,9 @@ class GenFact:
 
                 if self.args.n_samples is not None and tot == args.n_samples:
                     break
-        topics = topics[:20]
-        generations = generations[:20]
-        groundings = groundings[:20]
+        topics = topics[:1]
+        generations = generations[:1]
+        groundings = groundings[:1]
         out = self.fs.get_score(topics=topics,
                            generations=generations,
                            groundings=groundings,
@@ -351,6 +351,7 @@ class DebertaNli:
 
 def get_pooled_score(deberta_extrinsic_out):
     decisions = deberta_extrinsic_out["decisions"]
+    print (decisions.keys())
     new_decisions = list()
     pooled_scores = list()
 
@@ -501,7 +502,7 @@ if __name__ == '__main__':
 
         fs_updated_score, fs_updated_wrong_facts = genFact.get_updated_score(factscore_out,fs_extrinsic_out)
         wandb_table = {"fs_wiki": factscore_out_vanilla["score"], "fs_grounded": factscore_out["score"],
-                       "fs_grounded_wiki": fs_updated_score}
+                       "fs_grounded_wiki": fs_updated_score, "dummy_value": 0}
         wandb_push_json(wandb_table, table_name="fs_table")
 
 

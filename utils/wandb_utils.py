@@ -18,7 +18,7 @@ def wandb_push_json(table_json:json, table_name):
     col_names = list(table_json.keys())
     table = wandb.Table(columns=col_names)
     values = list(table_json.values())
-    table.add_data(values[0], values[1], values[2])
+    table.add_data(values[0], values[1], values[2], values[3])
     wandb.log({table_name: table}, commit=True)
 
 def wandb_push_table(tab:json):
