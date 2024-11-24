@@ -523,7 +523,7 @@ if __name__ == '__main__':
 
     print("Deberta intrinsic done.\n\n")
     # Calculates the final pooled prediction (inside of pooled_decisions) and final pooled score.
-    db_out_pooled_decisions, db_out_pooled_score = get_pooled_score(deberta_out)
+    db_out_pooled_decisions, db_out_pooled_score = get_pooled_score(deberta_out, mode='intrinsic')
     genFact['db_out_pooled_decisions'] = db_out_pooled_decisions
 
     #Checks the wrong facts with extrinsic checking over Wikipedia. Gives final NLI score.
