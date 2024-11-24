@@ -314,7 +314,7 @@ class FactScorer(object):
 
         try:
             passages = self.retrieval[knowledge_source].get_passages(topic, atom, k=5)
-            print ("got passage using  provided topic")
+            #print ("got passage using  provided topic")
         except:
             # try all suggested topics until a match is found
             #print("didn't get passage using  provided topic")
@@ -326,7 +326,7 @@ class FactScorer(object):
 
             success = False
             idx = 0
-            print ( f"trying out {len(topics)} topics from search_Wiki function.")
+            #print ( f"trying out {len(topics)} topics from search_Wiki function.")
             #if len(topics) == 1:
             #    print ("Problem found")
             #    print ("Generation: ", generation)
@@ -340,7 +340,7 @@ class FactScorer(object):
                     passages = self.retrieval[knowledge_source].get_passages(topic, atom, k=3)
                     idx += 1
                     success = True
-                    print (f"topic found: {topic}")
+                    #print (f"topic found: {topic}")
                 except :
                     #print (e)
                     idx += 1

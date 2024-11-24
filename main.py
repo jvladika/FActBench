@@ -351,7 +351,7 @@ class DebertaNli:
 
 def get_pooled_score(deberta_extrinsic_out):
     decisions = deberta_extrinsic_out["decisions"]
-    print (decisions.keys())
+    print (decisions[0].keys())
     new_decisions = list()
     pooled_scores = list()
 
