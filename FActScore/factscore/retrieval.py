@@ -128,10 +128,11 @@ class Retrieval(object):
 
     def load_encoder(self):
         from sentence_transformers import SentenceTransformer
-        print ("loaded encorder")
+        print ("loaded encoder")
         encoder = SentenceTransformer("sentence-transformers/" + self.retrieval_type)
-        encoder = encoder#.cuda()
+        encoder = encoder.cuda()
         encoder = encoder.eval()
+        print ("loaded")
         self.encoder = encoder
         assert self.batch_size is not None
     
@@ -180,6 +181,7 @@ class Retrieval(object):
     def get_gtr_passages(self, topic, retrieval_query, passages, k):
         print ("get gtr passage")
         if self.encoder is None:
+            print ("Attempting to load encoder")
             self.load_encoder()
         if topic in self.embed_cache:
             passage_vectors = self.embed_cache[topic]
