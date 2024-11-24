@@ -14,12 +14,12 @@ def wandb_setup():
     assert wandb_tok and wandb_tok != "<wb_token>", "Wandb token is not defined"
     wandb.login( key=wandb_tok)
 
-def wandb_push_json(table_json:json):
+def wandb_push_json(table_json:json, table_name):
     col_names = list(table_json.keys())
     table = wandb.Table(columns=col_names)
     values = list(table_json.values())
     table.add_data(values[0], values[1], values[2])
-    wandb.log({"metrics_table": table}, commit=True)
+    wandb.log({table_name: table}, commit=True)
 
 def wandb_push_table(tab:json):
     col_names = list(tab.keys())

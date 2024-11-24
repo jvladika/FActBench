@@ -69,6 +69,9 @@ class GenFact:
 
                 if self.args.n_samples is not None and tot == args.n_samples:
                     break
+        #topics = topics[:2]
+        #generations = generations[:2]
+        #groundings = groundings[:2]
         out = self.fs.get_score(topics=topics,
                            generations=generations,
                            groundings=groundings,
@@ -154,7 +157,7 @@ class GenFact:
                 for af in afs:
                     try:
                         if decision_before[idx][af["idx"]]['is_supported'] != af["is_supported"]:
-                            print(f"Updating the decision for the Atomic Fact: {af} for sample {idx}")
+                            #print(f"Updating the decision for the Atomic Fact: {af} for sample {idx}")
                             decision_before[idx][af["idx"]]['is_supported'] = af["is_supported"]
                     except:
                         print(f"Failed to Update the decision for the Atomic Fact: {af} for sample {idx}")
@@ -439,7 +442,7 @@ if __name__ == '__main__':
                         default="data/labeled/InstructGPT.jsonl")
     parser.add_argument('--model_name',
                         type=str,
-                        default="retrieval+ChatGPT")
+                        default="GPT4-mini")
     parser.add_argument('--openai_key',
                         type=str,
                         default="api.key")
@@ -477,10 +480,10 @@ if __name__ == '__main__':
 
     else:
 
-        #print ("Running Vanilla FactScore")
-        #factscore_out_vanilla = genFact.run_factscrorer(grounding_provided = False )
-        #genFact.write_logs(factscore_out_vanilla, fname="factscore_vanilla.json")
-        factscore_out_vanilla = {"score":0}
+        print ("Running Vanilla FactScore")
+        factscore_out_vanilla = genFact.run_factscrorer(grounding_provided = False )
+        genFact.write_logs(factscore_out_vanilla, fname="factscore_vanilla.json")
+        #factscore_out_vanilla = {"score":0}
 
         print ("Running Factscore with grounded document")
         factscore_out = genFact.run_factscrorer(grounding_provided=args.grounding_provided)
@@ -498,7 +501,7 @@ if __name__ == '__main__':
         fs_updated_score, fs_updated_wrong_facts = genFact.get_updated_score(factscore_out,fs_extrinsic_out)
         wandb_table = {"fs_wiki": factscore_out_vanilla["score"], "fs_grounded": factscore_out["score"],
                        "fs_grounded_wiki": fs_updated_score}
-        wandb_push_json(wandb_table)
+        wandb_push_json(wandb_table, table_name="fs_table")
 
 
     #Creates new class for deberta predictions. Loads a model from HuggingFace.
@@ -529,7 +532,7 @@ if __name__ == '__main__':
     deberta_score_dict = {
                    "deberta_grounded": factscore_out["deberta_score_intrinsic"],
                 "deberta_grounded_wiki": deberta_final_score,"pooled_score":pooled_score}
-    wandb_push_json(deberta_score_dict)
+    wandb_push_json(deberta_score_dict, table_name="db_table")
 
     db_regenerations = factscore_out["generations"]
     #db_regenerations = regenerate_text(factscore_out["generations"], flatten_hallucinations(fs_updated_wrong_facts))

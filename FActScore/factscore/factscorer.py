@@ -141,9 +141,9 @@ class FactScorer(object):
                                                         gpt3_cache_file=os.path.join(self.cache_dir, "GPT4o-mini.pkl"))
 
             # estimate the total cost of atomic fact generation
-            total_words = 0
-            for gen in generations:
-                total_words += self.af_generator.run(gen, cost_estimate=self.cost_estimate)
+            #total_words = 0
+            #for gen in generations:
+            #    total_words += self.af_generator.run(gen, cost_estimate=self.cost_estimate)
 
             #self.print_cost_estimates(total_words, task="atomic fact generation", model="GPT-4o mini")
 
@@ -179,7 +179,9 @@ class FactScorer(object):
             total_words = 0
             for topic, generation, facts, grounding in zip(topics, generations, atomic_facts, groundings):
                 if facts is not None:
-                    total_words += self._get_score(topic, generation, facts, knowledge_source, cost_estimate=self.cost_estimate, grounding=grounding, grounding_provided=grounding_provided)
+                    total_words += self._get_score(topic, generation, facts, knowledge_source,
+                                                   cost_estimate=self.cost_estimate, grounding=grounding,
+                                                   grounding_provided=grounding_provided)
 
             #self.print_cost_estimates(total_words, task="factscore evaluation", model="gpt-3.5-turbo")
 
@@ -197,7 +199,8 @@ class FactScorer(object):
             if facts is None:
                 decisions.append(None)
             else:
-                decision = self._get_score(topic, generation, facts, knowledge_source, grounding=grounding, grounding_provided=grounding_provided)
+                decision = self._get_score(topic, generation, facts, knowledge_source, grounding=grounding,
+                                           grounding_provided=grounding_provided)
                 score = np.mean([d["is_supported"] for d in decision])
                 wrong_fact = [{"atom":d["atom"], "idx":idx}  for idx, d in enumerate(decision) if not d["is_supported"]]
 
@@ -256,7 +259,7 @@ class FactScorer(object):
                "decisions": decisions,
                "extrinsic_facts": extrinsic_facts,
                }
-        print ("The following wrongly classified facts are Extrinsic: \n {}".format(extrinsic_facts))
+        #print ("The following wrongly classified facts are Extrinsic: \n {}".format(extrinsic_facts))
 
         return extrinsic_af
 
@@ -299,7 +302,7 @@ class FactScorer(object):
                "wrong_facts": extrinsic_hallucinated_facts,
                "num_facts_per_response": np.mean([len(d) for d in decisions if d is not None])}
 
-        print ("The following facts are still classified as hallucinations after Extrinsic Fact Checking: \n {}".format(extrinsic_facts))
+        #print ("The following facts are still classified as hallucinations after Extrinsic Fact Checking: \n {}".format(extrinsic_facts))
         return self.extrinsic_out
 
 
@@ -340,6 +343,8 @@ class FactScorer(object):
     def _get_score(self, topic, generation, atomic_facts, knowledge_source, grounding = None, grounding_provided=False,
                    cost_estimate=None, check_extrinsic = False, get_topic_per_af = False):
         decisions = []
+        always_use_same_passage = False
+        passages = None
         total_words = 0
         for atomic_fact in atomic_facts:
             if not isinstance(atomic_fact, str):
@@ -354,12 +359,16 @@ class FactScorer(object):
                     if isinstance(grounding, str):
                         grounding = [grounding]
                     passages = [{'title': 'Article', 'text': ground} for ground in grounding]
+                elif always_use_same_passage and passages is not None:
+                    passages = passages
+
                 elif get_topic_per_af:
                     # passing empty topic would force the retriever the get a llm generated topic
                     passages = self.search_passage_till_success(topic = '', atom = atom, generation=atom,
                                                        knowledge_source=knowledge_source)
                 else:
                     passages = self.search_passage_till_success(topic, atom, generation, knowledge_source)
+                    always_use_same_passage = True
 
                 if check_extrinsic:
                     definition = "Does the provided text contain any information related to the Input statement?.\n\n"
