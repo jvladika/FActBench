@@ -69,9 +69,9 @@ class GenFact:
 
                 if self.args.n_samples is not None and tot == args.n_samples:
                     break
-        topics = topics[:10]
-        generations = generations[:10]
-        groundings = groundings[:10]
+        topics = topics[:5]
+        generations = generations[:5]
+        groundings = groundings[:5]
         out = self.fs.get_score(topics=topics,
                            generations=generations,
                            groundings=groundings,

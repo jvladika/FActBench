@@ -203,7 +203,7 @@ class Retrieval(object):
         retrieval_query = topic + " " + question.strip()
         cache_key = topic + "#" + retrieval_query
         print (cache_key)
-        print (self.cache.keys())
+        #print (self.cache.keys())
         
         if cache_key not in self.cache:
             passages = self.db.get_text_from_title(topic)
