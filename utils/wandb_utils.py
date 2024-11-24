@@ -33,10 +33,16 @@ def wandb_push_table(tab:json):
     wandb.log({"data_table": table}, commit=True)
 
 
-def wandb_init_run(run_path:str, config = None, wandb_project_name = "factgen", entity = "sebis19"
+def wandb_init_run(run_path:str, config = None, wandb_project_name = "factgen", entity = "anum-afzal-technical-university-of-munich"
                    ):
     wandb_setup()
     wandb_mode = "online"
+    # wandb.init(
+    # set the wandb project where this run will be logged
+    #    project="factcheck-summarization",
+    #    config={
+    #    }
+    # )
     wandb_run = os.path.basename(run_path).replace('.jsonl','')
     model = wandb_run.split('_')[2]
     ds = wandb_run.split('_')[4]

@@ -21,21 +21,7 @@ device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cp
 
 
 fs_logs_available = {
-    'o57ce46c': "2024-09-10_18-10-06",
-    "qeho5s6u": '2024-09-10_18-15-49',
-    "aw1b1yi1": "2024-09-10_18-12-17",
-    "1od31evk": "2024-09-10_22-16-38", #download this from gdrive link
-    "5ujrnpzr": "2024-09-11_08-28-11",
-    "0363w13s":"2024-09-12_09-51-25",
-    "79g8acv4":"2024-09-12_10-41-02",
-    "jqfk1u3g": "2024-09-12_16-35-14",
-    "zj6t2ti7" : "2024-09-13_16-13-34",
-    "ca5e1s8g":"2024-09-15_20-36-40",
-    "x3li1qsl": "2024-09-16_11-51-10",
-    "ov3uhzpp": "2024-09-15_18-14-45",
-    "ca5e1s8g": "2024-09-15_20-36-40",
     "human-eval": "folder",
-
 }
 
 class GenFact:
@@ -516,7 +502,7 @@ if __name__ == '__main__':
 
 
     #Creates new class for deberta predictions. Loads a model from HuggingFace.
-    '''
+
     deberta_nli = DebertaNli(score_out = factscore_out,
                              decisions =  factscore_out["decisions"],
                               groundings = factscore_out["groundings"],
@@ -554,4 +540,4 @@ if __name__ == '__main__':
     wandb_push_table(wandb_table)
 
     print("done")
-    '''
+
