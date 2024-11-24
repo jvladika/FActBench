@@ -69,9 +69,9 @@ class GenFact:
 
                 if self.args.n_samples is not None and tot == args.n_samples:
                     break
-        topics = topics[:1]
-        generations = generations[:1]
-        groundings = groundings[:1]
+        topics = topics[:2]
+        generations = generations[:2]
+        groundings = groundings[:2]
         out = self.fs.get_score(topics=topics,
                            generations=generations,
                            groundings=groundings,
@@ -351,7 +351,6 @@ class DebertaNli:
 
 def get_pooled_score(deberta_extrinsic_out, mode = None):
     decisions = deberta_extrinsic_out["decisions"]
-    print (decisions[0].keys())
     new_decisions = list()
     pooled_scores = list()
 
