@@ -69,9 +69,9 @@ class GenFact:
 
                 if self.args.n_samples is not None and tot == args.n_samples:
                     break
-        topics = topics[:20]
-        generations = generations[:20]
-        groundings = groundings[:20]
+        topics = topics[:4]
+        generations = generations[:4]
+        groundings = groundings[:4]
         out = self.fs.get_score(topics=topics,
                            generations=generations,
                            groundings=groundings,
@@ -519,6 +519,8 @@ if __name__ == '__main__':
     genFact.write_logs(deberta_out, fname="deberta_grounded.json")
 
     print("Deberta intrinsic done.\n\n")
+    # Calculates the final pooled prediction (inside of pooled_decisions) and final pooled score.
+    db_out_pooled_decisions, db_out_pooled_score = get_pooled_score(deberta_out)
 
     #Checks the wrong facts with extrinsic checking over Wikipedia. Gives final NLI score.
     deberta_nli.score_out = deberta_out    
@@ -531,8 +533,8 @@ if __name__ == '__main__':
     pooled_decisions, pooled_score = get_pooled_score(deberta_extrinsic_out)
 
     deberta_score_dict = {
-                   "deberta_grounded": factscore_out["deberta_score_intrinsic"],
-                "deberta_grounded_wiki": deberta_final_score,"pooled_score":pooled_score}
+                   "deberta_grounded": factscore_out["deberta_score_intrinsic"], "intrinsic_pooled_score":db_out_pooled_score,
+                "deberta_grounded_wiki": deberta_final_score,"extrinsic_pooled_score":pooled_score}
     wandb_push_json(deberta_score_dict, table_name="db_table")
 
     db_regenerations = factscore_out["generations"]

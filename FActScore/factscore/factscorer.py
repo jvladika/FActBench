@@ -243,6 +243,7 @@ class FactScorer(object):
             #print(f"Running for the follow wrongly classified facts to check if they are intrinsic or extrinsic. {facts}")
             if facts is None:
                 decisions.append(None)
+                extrinsic_facts.append([])
             else:
                 decision = self._get_score(topic, generation, facts, knowledge_source=None, grounding=grounding,
                                            grounding_provided=grounding_provided, check_extrinsic=True)
