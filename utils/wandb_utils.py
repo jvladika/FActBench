@@ -24,12 +24,8 @@ def wandb_push_json(table_json:json, table_name):
 def wandb_push_table(tab:json):
     col_names = list(tab.keys())
     table = wandb.Table(columns=col_names)
-    for gen,hals,regen in zip(tab["generations"], tab["hallucinations"], tab["regenerations"]):
-        h = ""
-        for hal in hals:
-            h = h.join("{}\\n".format(hal["atom"]))
-
-        table.add_data(gen, h, regen)
+    for gen,hals,regen in zip(tab["generations"], tab["fs_hallucinations"], tab["regenerations"]):
+        table.add_data(gen, hals, regen)
     wandb.log({"data_table": table}, commit=True)
 
 

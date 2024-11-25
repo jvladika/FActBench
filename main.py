@@ -69,9 +69,9 @@ class GenFact:
 
                 if self.args.n_samples is not None and tot == args.n_samples:
                     break
-        topics = topics[:1]
-        generations = generations[:1]
-        groundings = groundings[:1]
+        topics = topics[:2]
+        generations = generations[:2]
+        groundings = groundings[:2]
         out = self.fs.get_score(topics=topics,
                            generations=generations,
                            groundings=groundings,
@@ -475,7 +475,6 @@ if __name__ == '__main__':
 
         fs_updated_score, fs_updated_wrong_facts = genFact.get_updated_score(factscore_out, fs_extrinsic_out)
 
-        #db_regenerations = regenerate_text(factscore_out["generations"], flatten_hallucinations(fs_updated_wrong_facts))
         wandb_table = {"fs_wiki": factscore_out_vanilla["score"], "fs_grounded": factscore_out["score"],
                        "fs_grounded_wiki": fs_updated_score}
         pooled_decisions, pooled_score = get_pooled_score(db_extrinsic_out)
@@ -506,7 +505,7 @@ if __name__ == '__main__':
         wandb_table = {"fs_wiki": factscore_out_vanilla["score"], "fs_grounded": factscore_out["score"],
                        "fs_grounded_wiki": fs_updated_score, "dummy_value": 0}
         wandb_push_json(wandb_table, table_name="fs_table")
-        fs_hal = ['\n'.join(hal) for hal in flatten_hallucinations(fs_updated_wrong_facts)]
+
 
 
     #Creates new class for deberta predictions. Loads a model from HuggingFace.
@@ -545,8 +544,8 @@ if __name__ == '__main__':
     #db_regenerations = factscore_out["generations"]
     #db_regenerations = regenerate_text(factscore_out["generations"], flatten_hallucinations(fs_updated_wrong_facts))
     db_regenerations = ['']*len(factscore_out["generations"]) #regenerate_text(factscore_out["generations"], flatten_hallucinations(fs_updated_wrong_facts))
-
-    wandb_table = {"generations": factscore_out["generations"], "fs_hallucinations": fs_hal,
+    halucinations = ['\n'.join(hal) for hal in flatten_hallucinations(fs_updated_wrong_facts)]
+    wandb_table = {"generations": factscore_out["generations"], "fs_hallucinations": halucinations,
                     'regenerations':db_regenerations}
     wandb_push_table(wandb_table)
 
