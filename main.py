@@ -488,12 +488,11 @@ if __name__ == '__main__':
         genFact.write_logs(factscore_out_vanilla, fname="factscore_vanilla.json")
         #factscore_out_vanilla = {"score":0}
 
-        print ("Running Factscore with grounded document")
+        print ("Running Factscore with grounded document: Intrinsic")
         factscore_out = genFact.run_factscrorer(grounding_provided=args.grounding_provided)
         genFact.write_logs(factscore_out, fname="factscore_grounded.json")
 
-
-
+        print("Running Factscore with grounded document: Extrinsic")
         fs_extrinsic_af = genFact.fs_get_extrinsic_af(topics = factscore_out["topics"], wrong_facts = factscore_out["wrong_facts"],
                     groundings=  factscore_out["groundings"], generations = factscore_out["generations"],
                                                 grounding_provided= factscore_out["grounding_provided"])
