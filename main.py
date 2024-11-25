@@ -541,9 +541,8 @@ if __name__ == '__main__':
                 "deberta_grounded_wiki": deberta_final_score,"extrinsic_pooled_score":pooled_score}
     wandb_push_json(deberta_score_dict, table_name="db_table")
 
-    #db_regenerations = factscore_out["generations"]
     db_regenerations = regenerate_text(factscore_out["generations"], flatten_hallucinations(fs_updated_wrong_facts))
-    db_regenerations = ['']*len(factscore_out["generations"]) #regenerate_text(factscore_out["generations"], flatten_hallucinations(fs_updated_wrong_facts))
+    #db_regenerations = ['']*len(factscore_out["generations"])
     halucinations = ['\n'.join(hal) for hal in flatten_hallucinations(fs_updated_wrong_facts)]
     wandb_table = {"generations": factscore_out["generations"], "fs_hallucinations": halucinations,
                     'regenerations':db_regenerations}
