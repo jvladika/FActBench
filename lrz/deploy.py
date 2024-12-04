@@ -39,6 +39,7 @@ def get_exec_str(input_path) -> str:
 if __name__ == "__main__":
     parser = config_parser()
     input_path = parser.input_path
+    input_path = os.path.join("results", input_path.split('/')[-1])
 
     # get full run path from the config json file
     exec_path = get_exec_str(input_path)
