@@ -69,7 +69,7 @@ if __name__ == "__main__":
         sbatch_file.write(f"#SBATCH -e {dump_err_path}\n")
         sbatch_file.write(f"#SBATCH --time={parser.max_time}\n\n")
 
-        srun_command = f"srun --container-image ~/demo.sqsh --container-mounts={og_path_container}:/mnt/container torchrun --nproc_per_node={parser.num_gpus} --standalone ~/FactSumm/main.py --input_path {absolute_input_path} --abs_path"
+        srun_command = f"srun --container-image ~/demo.sqsh --container-mounts={og_path_container}:/mnt/container torchrun --nproc_per_node={parser.num_gpus} --standalone ~/FactSumm/main.py --input_path {absolute_input_path} --abs_path True"
 
         sbatch_file.write(f"{srun_command}\n")
 
