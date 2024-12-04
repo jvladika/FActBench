@@ -10,7 +10,6 @@ import pandas as pd
 import wandb
 
 runs = [
-'ydt4g04k'
 ]
 
 
@@ -79,9 +78,9 @@ def load_wandb_domain_adaptation_summarization_data(out_dir:str, entity: str, pr
 
 def main():
     out_dir = "../results"
-    entity = "nlp-sebis"
+    entity = "anum-afzal-technical-university-of-munich"
 
-    project = "factcheck-lay-summarization"
+    project = "factcheck-summarization"
 
     failed_runs = load_wandb_domain_adaptation_summarization_data(out_dir, entity=entity, project=project)
     print (failed_runs)

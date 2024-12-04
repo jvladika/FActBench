@@ -103,12 +103,12 @@ def csv_to_jsonl_for_factscore(results_dir):
     runs = glob.glob('{}/*.{}'.format(results_dir, extension))
 
     jsonl_paths = []
-    for run in runs:
+    for run in tqdm(runs):
         path_d = run.replace('.csv', '.jsonl')
         jsonl_paths.append(path_d)
 
         df = pd.read_csv(run) #, encoding='ISO-8859-1')
-        df = df.head(1)
+        df = df.head(5)
         #df = df.loc[[3,18]]
 
         # add columns required by factscore

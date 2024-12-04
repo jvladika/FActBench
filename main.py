@@ -452,7 +452,7 @@ if __name__ == '__main__':
                         default="api.key")
     parser.add_argument('--grounding_provided',
                         type=bool,
-                        default=False)
+                        default=True)
     args = parser.parse_args()
 
 
