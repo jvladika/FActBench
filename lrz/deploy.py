@@ -43,6 +43,7 @@ if __name__ == "__main__":
     parser = config_parser()
     print (parser)
     input_path = parser.input_path
+    print ("input", input_path)
 
 
     # get full run path from the config json file
