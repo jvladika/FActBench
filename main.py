@@ -431,6 +431,9 @@ def parse_options(args: List[str]) -> argparse.Namespace:
     parser.add_argument('--grounding_provided',
                         type=bool,
                         default=False)
+    parser.add_argument('--abs_path',
+                        type=bool,
+                        default=False)
 
     args = parser.parse_args()
     return args
