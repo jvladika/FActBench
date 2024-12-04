@@ -30,21 +30,15 @@ def config_parser() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def get_exec_str(args) -> str:
-    print (args['input_path'])
-    model_name = (args['input_path'].split('/')[1]).split('_')[2]
-    ds_name  = (args['input_path'].split('/')[1]).split('_')[4]
+def get_exec_str(input_path) -> str:
+    model_name = (input_path.split('/')[1]).split('_')[2]
+    ds_name  = (input_path.split('/')[1]).split('_')[4]
     print (model_name, ds_name)
     return f"{ds_name}-{model_name}"
 
-
-
 if __name__ == "__main__":
     parser = config_parser()
-    print (parser)
     input_path = parser.input_path
-    print ("input", input_path)
-
 
     # get full run path from the config json file
     exec_path = get_exec_str(input_path)
