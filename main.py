@@ -453,6 +453,10 @@ if __name__ == '__main__':
     parser.add_argument('--grounding_provided',
                         type=bool,
                         default=True)
+
+    parser.add_argument('--abs_path',
+                        type=bool,
+                        default=False)
     args = parser.parse_args()
 
 
@@ -461,8 +465,12 @@ if __name__ == '__main__':
 
 
     genFact = GenFact(args)
+    if args.abs_path:
+        input_path = os.path.join("results", args.input_path.split('/')[-1])
+    else:
+        input_path = args.input_path
 
-    base_run_id = wandb_init_run(run_path=args.input_path, config = genFact.args)
+    base_run_id = wandb_init_run(run_path=input_path, config = genFact.args)
 
     if base_run_id in fs_logs_available.keys():
         fs_cache_dir = os.path.dirname(genFact.log_dir)

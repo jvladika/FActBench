@@ -56,3 +56,5 @@ python main.py --input_path /Users/anumafzal/PycharmProjects/FactSumm/results/3z
 
 python main.py --input_path /home/ubuntu/juraj/results/gpt4omini.jsonl --model_name GPT4-mini --grounding_provided True --openai_key api.key
 
+for running on lrz:
+python lrz/deploy.py --input_path /dss/dsshome1/lxc0A/ga27wos2/FactSumm/results/ec27kf6l_MODEL_mistralai-Mixtral-8x7B-Instruct-v0.1_DS_pubmed_TASK_summarization.jsonl --gpu lrz-dgx-a100-80x8 --max_time 2000

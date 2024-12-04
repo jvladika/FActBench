@@ -38,8 +38,8 @@ def get_exec_str(input_path) -> str:
 
 if __name__ == "__main__":
     parser = config_parser()
-    input_path = parser.input_path
-    input_path = os.path.join("results", input_path.split('/')[-1])
+    absolute_input_path = parser.input_path
+    input_path = os.path.join("results", absolute_input_path.split('/')[-1])
 
     # get full run path from the config json file
     exec_path = get_exec_str(input_path)
@@ -69,7 +69,7 @@ if __name__ == "__main__":
         sbatch_file.write(f"#SBATCH -e {dump_err_path}\n")
         sbatch_file.write(f"#SBATCH --time={parser.max_time}\n\n")
 
-        srun_command = f"srun --container-image ~/demo.sqsh --container-mounts={og_path_container}:/mnt/container torchrun --nproc_per_node={parser.num_gpus} --standalone ~/FactSumm/main.py --input_path {input_path}"
+        srun_command = f"srun --container-image ~/demo.sqsh --container-mounts={og_path_container}:/mnt/container torchrun --nproc_per_node={parser.num_gpus} --standalone ~/FactSumm/main.py --input_path {absolute_input_path} --abs_path"
 
         sbatch_file.write(f"{srun_command}\n")
 
