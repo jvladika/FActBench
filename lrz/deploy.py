@@ -31,7 +31,7 @@ def config_parser() -> argparse.Namespace:
 
 
 def get_exec_str(args) -> str:
-    print (args)
+    print (args['input_path'])
     model_name = (args['input_path'].split('/')[1]).split('_')[2]
     ds_name  = (args['input_path'].split('/')[1]).split('_')[4]
     print (model_name, ds_name)
