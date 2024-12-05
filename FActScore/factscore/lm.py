@@ -41,6 +41,7 @@ class LM(object):
         for k, v in self.load_cache().items():
             self.cache_dict[k] = v
 
+        self.cache_file = "/workspace/.cache/factscore/GPT4o-mini.pkl"
         with open(self.cache_file, "wb") as f:
             pickle.dump(self.cache_dict, f)
 

@@ -33,7 +33,7 @@ def config_parser() -> argparse.Namespace:
 def get_exec_str(input_path) -> str:
     model_name = (input_path.split('/')[1]).split('_')[2]
     ds_name  = (input_path.split('/')[1]).split('_')[4]
-    print (model_name, ds_name)
+    #print (model_name, ds_name)
     return f"{ds_name}-{model_name}"
 
 if __name__ == "__main__":
@@ -69,7 +69,7 @@ if __name__ == "__main__":
         sbatch_file.write(f"#SBATCH -e {dump_err_path}\n")
         sbatch_file.write(f"#SBATCH --time={parser.max_time}\n\n")
 
-        srun_command = f"srun --container-image ~/demo.sqsh --container-mounts={og_path_container}:/mnt/container torchrun --nproc_per_node={parser.num_gpus} --standalone ~/FactSumm/main.py --input_path {absolute_input_path} --abs_path True"
+        srun_command = f"srun --container-image ~/demo.sqsh --container-mounts={og_path_container}:/mnt/container torchrun --nproc_per_node={parser.num_gpus} --standalone ~/FactSumm/main.py --input_path {absolute_input_path} --abs_path True --model_name GPT4-mini --grounding_provided True --openai_key api.key"
 
         sbatch_file.write(f"{srun_command}\n")
 
