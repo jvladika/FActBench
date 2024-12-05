@@ -80,6 +80,7 @@ class FactScorer(object):
             cache_path = os.path.join(self.cache_dir, f"retrieval-{name}.json")
             embed_cache_path = os.path.join(self.cache_dir, f"retrieval-{name}.pkl")
 
+            print (db_path)
             self.db[name] = DocDB(db_path=db_path, data_path=data_path)
             self.retrieval[name] = Retrieval(self.db[name], cache_path, embed_cache_path, batch_size=self.batch_size)
             if "npm" in self.model_name:
