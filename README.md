@@ -1,4 +1,4 @@
-# FactSumm
+# FActBench
 
 ### FactScore instructions
 
